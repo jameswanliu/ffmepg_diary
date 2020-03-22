@@ -1,0 +1,2 @@
+rootProject.name='ffmpeg_diary'
+include ':app'
