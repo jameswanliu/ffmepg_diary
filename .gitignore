@@ -3,3 +3,4 @@ app/.cxx
 *.iml
 gradlew
 *.bat
+.gradle
