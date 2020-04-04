@@ -4,3 +4,4 @@ app/.cxx
 gradlew
 *.bat
 .gradle
+local.properties
