@@ -6,11 +6,11 @@
 extern "C" {//指明当前C++代码调用其他C
 #include <libavutil/avutil.h>
 #include <include/libavformat/avformat.h>
+#include <include/libavutil/imgutils.h>
 }
 
 JNIEnv *env = nullptr;
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
-
 
 
 extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, jobject surface) {
@@ -55,11 +55,26 @@ extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, j
     }
 
 
-    AVFrame *avFrame = nullptr;
-
     while (av_read_frame(avFormatContext, avPacket)) {
         avcodec_send_packet(avCodecContext, avPacket);
-        avcodec_receive_frame(avCodecContext, avFrame);
+        AVFrame *avFrame = av_frame_alloc();
+        int res = avcodec_receive_frame(avCodecContext, avFrame);
+        if (res == AVERROR(EAGAIN)) {
+            continue;
+        } else if (res < 0) {
+            LOGE("RECEIVE", "receive frame error");
+            break;
+        }
+
+
+        uint8_t *pointers[0];
+        int linesizes[0];
+        av_image_alloc(pointers, linesizes, avCodecContext->width, avCodecContext->height,
+                       avCodecContext->pix_fmt, 1);//分配大小为w和h、像素格式为pix_fmt的图像，
+        // 以及相应地填充指针和线条大小。必须使用 av_freep(&pointers[0]) 释放内存
+
+
+
     }
 
 
