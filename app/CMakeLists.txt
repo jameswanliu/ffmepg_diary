@@ -11,6 +11,12 @@ add_library( # Sets the name of the library.
         SHARED
         src/main/cpp/native-lib.cpp)
 
+add_library( # Sets the name of the library.
+        Version
+        SHARED
+        src/main/cpp/Version.cpp)
+
+
 find_library( # Sets the name of the path variable.
         log-lib
         log)
@@ -80,4 +86,14 @@ target_link_libraries( # Specifies the target library.
         # included in the NDK.
         android
         ${log-lib})
+
+
+target_link_libraries(
+        Version
+        avutil
+        ${log-lib}
+)
+
+
+
 
