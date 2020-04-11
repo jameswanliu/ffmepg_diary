@@ -10,31 +10,35 @@ import android.view.SurfaceView
  */
 
 
-class StephenPlayer(private val surfaceView: SurfaceView) : SurfaceHolder.Callback {
+class StephenPlayer(surfaceView: SurfaceView) : SurfaceHolder.Callback {
 
-    lateinit var surface: Surface
+    lateinit var surfaceHolder: SurfaceHolder
 
     external fun play(path: String,surface: Surface):Int
-
-
 
     companion object {
         init {
             System.loadLibrary("native-lib")
         }
     }
-
-    init {
-        surfaceView.holder.addCallback(this)
+    fun startPlay(path: String){
+        play(path,surfaceHolder.surface)
     }
 
-    override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
+    init {
+        surfaceHolder.removeCallback(this)
+        surfaceHolder = surfaceView.holder;
+        surfaceHolder.addCallback(this)
+    }
+
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        surfaceHolder = holder
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder?) {
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        surface = holder.surface
+
     }
 }

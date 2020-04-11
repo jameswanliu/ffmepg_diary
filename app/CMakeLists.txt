@@ -34,14 +34,6 @@ set_target_properties(avcodec
         PROPERTIES IMPORTED_LOCATION
         ${distribution_DIR}/libavcodec-58.so)
 
-
-add_library(avdevice
-        SHARED
-        IMPORTED)
-set_target_properties(avdevice
-        PROPERTIES IMPORTED_LOCATION
-        ${distribution_DIR}/libavdevice-58.so)
-
 add_library(avfilter
         SHARED
         IMPORTED)
@@ -81,11 +73,14 @@ set_target_properties(swscale
 target_link_libraries( # Specifies the target library.
         native-lib
         #        avfilter avformat avcodec avutil swresample swscale
-        avcodec avdevice avfilter avformat avutil swresample swscale
+        avcodec avfilter avformat avutil swresample swscale
         # Links the target library to the log library
         # included in the NDK.
-        android
-        ${log-lib})
+        ${log-lib}
+        z
+        android #native_window
+        OpenSLES #openSLES
+        )
 
 
 target_link_libraries(
