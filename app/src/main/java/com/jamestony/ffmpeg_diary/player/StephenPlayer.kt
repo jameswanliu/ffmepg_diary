@@ -16,18 +16,13 @@ class StephenPlayer(surfaceView: SurfaceView) : SurfaceHolder.Callback {
 
     external fun play(path: String,surface: Surface):Int
 
-    companion object {
-        init {
-            System.loadLibrary("native-lib")
-        }
-    }
     fun startPlay(path: String){
         play(path,surfaceHolder.surface)
     }
 
     init {
-        surfaceHolder.removeCallback(this)
-        surfaceHolder = surfaceView.holder;
+        System.loadLibrary("native-lib")
+        surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(this)
     }
 

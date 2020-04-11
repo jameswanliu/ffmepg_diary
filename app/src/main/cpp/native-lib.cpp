@@ -2,19 +2,21 @@
 #include <string>
 #include "androidlog.h"
 #include <android/native_window_jni.h>
-#include <include/libswscale/swscale.h>
+
 
 extern "C" {//指明当前C++代码调用其他C
 #include <libavutil/avutil.h>
 #include <include/libavformat/avformat.h>
 #include <include/libavutil/imgutils.h>
+#include <include/libswscale/swscale.h>
 }
 
-JNIEnv *env = nullptr;
-static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
+//JNIEnv *env = nullptr;
+//static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
 
-extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, jobject surface) {
+extern "C" JNIEXPORT jint JNICALL
+        Java_com_jamestony_ffmpeg_1diary_player_StephenPlayer_play(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     const char *path_ = env->GetStringUTFChars(path, NULL);//视频路径
 
     AVFormatContext *avFormatContext;
@@ -32,7 +34,7 @@ extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, j
         return ret;
     }
 
-    ret = avformat_find_stream_info(avFormatContext, &avDictionary);
+    ret = avformat_find_stream_info(avFormatContext, NULL);
     if (ret < 0) {
         LOGE("FIND", "find stream error");
         return ret;
@@ -118,24 +120,26 @@ extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, j
     env->ReleaseStringUTFChars(path, path_);
 }
 
-JNINativeMethod method[] = {{"play", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) play}};
-
-JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-    int ret = vm->GetEnv((void **) &env, JNI_VERSION_1_6);
-    if (ret != JNI_OK) {
-        LOGE("getenv", "error");
-    }
-    ret = env->RegisterNatives(env->FindClass(classPath), method,
-                               sizeof(method) / sizeof(JNINativeMethod));
-    if (ret != JNI_OK) {
-        LOGE("regist", "regist_error");
-    }
-    if (ret != JNI_OK) {
-        LOGE("regist", "registSplashPath_error");
-    }
-    avformat_network_init();
-    return 1;
-}
+//JNINativeMethod method[] = {{"play", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) play}};
+//
+//JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+//
+//
+//    int ret = vm->GetEnv((void **) &env, JNI_VERSION_1_6);
+//    if (ret != JNI_OK) {
+//        LOGE("getenv", "error");
+//    }
+//    ret = env->RegisterNatives(env->FindClass(classPath), method,
+//                               sizeof(method) / sizeof(JNINativeMethod));
+//    if (ret != JNI_OK) {
+//        LOGE("regist", "regist_error");
+//    }
+//    if (ret != JNI_OK) {
+//        LOGE("regist", "registSplashPath_error");
+//    }
+//    avformat_network_init();
+//    return 1;
+//}
 
 
 
