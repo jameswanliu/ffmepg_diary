@@ -21,7 +21,6 @@ find_library( # Sets the name of the path variable.
         log-lib
         log)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
 set(distribution_DIR ${CMAKE_SOURCE_DIR}/src/main/jniLibs/${ANDROID_ABI})#将so库放入src/main/jniLibs目录下
 include_directories(src/main/cpp)
 include_directories(${CMAKE_SOURCE_DIR}/src/main/cpp/include)

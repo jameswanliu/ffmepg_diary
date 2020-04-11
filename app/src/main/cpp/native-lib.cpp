@@ -58,7 +58,7 @@ extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, j
     SwsContext *swsContext = sws_getContext(avCodecContext->width, avCodecContext->height,
                                             avCodecContext->pix_fmt,
                                             avCodecContext->width, avCodecContext->height,
-                                            AV_PIX_FMT_RGBA, SWS_BILINEAR, NULL, NULL, NULL);
+                                            AV_PIX_FMT_RGBA, SWS_BICUBIC, NULL, NULL, NULL);
     ANativeWindow_setBuffersGeometry(nativeWindow, avCodecContext->width, avCodecContext->height,
                                      WINDOW_FORMAT_RGBA_8888);
 
@@ -87,7 +87,7 @@ extern "C" JNIEXPORT jint JNICALL play(JNIEnv *env, jobject obj, jstring path, j
         // 通过swscontext 将yuv 数据转换成rgb 数据 注意 avframe 通过receive_frame已经获取到了数据 ，
         // 输入源是frame->data,pointer 是通过av_image_alloc
         //申请的格式为AV_PIX_FMT_RGBA 格式的图像，linesizes是申请的行数，所以 pointer 是 输出源
-        sws_scale(swsContext, reinterpret_cast<const uint8_t *const *>(avFrame->data),
+        sws_scale(swsContext, (const uint8_t *const *)(avFrame->data),
                   avFrame->linesize, 0, avFrame->height,  pointers,
                  linesizes);
 

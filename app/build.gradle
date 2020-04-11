@@ -19,8 +19,11 @@ android {
         }
         externalNativeBuild {
             cmake {
-                cppFlags ""
-                abiFilters "armeabi-v7a"
+                cppFlags "-frtti -fexceptions -Wno-deprecated-declarations"
+                cFlags "-DSTDC_HEADERS"
+//
+//                cppFlags ""
+//                abiFilters "armeabi-v7a"
             }
         }
     }
