@@ -72,14 +72,16 @@ set_target_properties(swscale
 
 target_link_libraries( # Specifies the target library.
         native-lib
-        #        avfilter avformat avcodec avutil swresample swscale
-        avcodec avfilter avformat avutil swresample swscale
-        # Links the target library to the log library
-        # included in the NDK.
-        ${log-lib}
+        OpenSLES
+        avcodec
+        avfilter
+        avformat
+        avutil
+        swresample
+        swscale
         z
-        android #native_window
-        OpenSLES #openSLES
+        android
+        ${log-lib}
         )
 
 
