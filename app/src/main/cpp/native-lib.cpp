@@ -2,6 +2,7 @@
 #include <string>
 #include "androidlog.h"
 #include <android/native_window_jni.h>
+#include <unistd.h>
 
 
 extern "C" {//指明当前C++代码调用其他C
@@ -13,6 +14,7 @@ extern "C" {//指明当前C++代码调用其他C
 
 JNIEnv *env = nullptr;
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
+
 
 
 extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject surface) {
@@ -65,8 +67,15 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
 
     ANativeWindow_Buffer outBuffer;
 
+
+//    AvPacketQueue *avPacketQueue = new AvPacketQueue();
+
+
     while (av_read_frame(avFormatContext, avPacket) >= 0) {
         avcodec_send_packet(avCodecContext, avPacket);
+//        avPacketQueue->pushAvPacket(avPacket);
+//        avPacketQueue->popAvPacket();
+
         AVFrame *avFrame = av_frame_alloc();
         int res = avcodec_receive_frame(avCodecContext, avFrame);
         if (res == AVERROR(EAGAIN)) {
@@ -88,9 +97,9 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
         // 通过swscontext 将yuv 数据转换成rgb 数据 注意 avframe 通过receive_frame已经获取到了数据 ，
         // 输入源是frame->data,pointer 是通过av_image_alloc
         //申请的格式为AV_PIX_FMT_RGBA 格式的图像，linesizes是申请的行数，所以 pointer 是 输出源
-        sws_scale(swsContext, (const uint8_t *const *)(avFrame->data),
-                  avFrame->linesize, 0, avFrame->height,  pointers,
-                 linesizes);
+        sws_scale(swsContext, (const uint8_t *const *) (avFrame->data),
+                  avFrame->linesize, 0, avFrame->height, pointers,
+                  linesizes);
 
         //与 获取图像的bitmap一样 首先要上锁 然后获取 outbuffer
         //将上一步的输出源pointer 拷贝到 nativewindow 中的buffer 中
@@ -112,12 +121,17 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
             memcpy(start + i * destStride, src_data + i * srcStride, destStride);
         }
         ANativeWindow_unlockAndPost(nativeWindow);
+        usleep(1000 * 16);
         av_frame_free(&avFrame);
     }
     ANativeWindow_release(nativeWindow);
     avcodec_close(avCodecContext);
+//    delete (avPacketQueue);
     env->ReleaseStringUTFChars(path, path_);
 }
+
+
+
 
 JNINativeMethod method[] = {{"play", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) play}};
 

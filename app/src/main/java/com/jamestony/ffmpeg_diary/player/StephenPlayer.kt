@@ -21,7 +21,7 @@ class StephenPlayer(surfaceView: SurfaceView) : SurfaceHolder.Callback {
     }
 
     init {
-        System.loadLibrary("native-lib")
+        System.loadLibrary("StephenFFmpeg")
         surfaceHolder = surfaceView.holder
         surfaceHolder.addCallback(this)
     }

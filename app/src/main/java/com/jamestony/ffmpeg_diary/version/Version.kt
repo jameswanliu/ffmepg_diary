@@ -9,7 +9,7 @@ package com.jamestony.ffmpeg_diary.version
 class Version {
     companion object{
         init {
-            System.loadLibrary("Version")
+            System.loadLibrary("StephenFFmpeg")
         }
     }
     external fun getVersion(): String
