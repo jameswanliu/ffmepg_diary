@@ -6,6 +6,7 @@ import android.os.Bundle
 import com.hjq.permissions.OnPermission
 import com.hjq.permissions.Permission
 import com.hjq.permissions.XXPermissions
+import com.jamestony.ffmpeg_diary.ui.AudioDecodecActivity
 import com.jamestony.ffmpeg_diary.ui.VideoDecodeActivity
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -29,7 +30,9 @@ class MainActivity : AppCompatActivity() {
                 ) = Unit
             })
 
-
+        acb_audio_decode.setOnClickListener {
+            startActivity(Intent(this, AudioDecodecActivity::class.java))
+        }
 
         acb_video_decode.setOnClickListener {
             startActivity(Intent(this, VideoDecodeActivity::class.java))

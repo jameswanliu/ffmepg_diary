@@ -3,7 +3,7 @@
 #include "androidlog.h"
 #include <android/native_window_jni.h>
 #include <unistd.h>
-
+#include <__std_stream>
 
 
 extern "C" {//指明当前C++代码调用其他C
@@ -17,6 +17,9 @@ extern "C" {//指明当前C++代码调用其他C
 JNIEnv *env = nullptr;
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
+static const char *classAudioPath = "com/jamestony/ffmpeg_diary/player/SteAudioPlayer";
+
+using namespace std;
 
 extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstring output) {
     int ret = -1;
@@ -28,11 +31,16 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
     av_dict_set(&avDictionary, "timeout", "3000000", 0);
     ret = avformat_open_input(&avFormatContext, path_, NULL, &avDictionary);
     if (ret != 0) {
-        LOGE("OPEN", "open video fail");
+        LOGE("OPEN", "open audio fail");
         return ret;
     }
 
-    avformat_find_stream_info(avFormatContext, NULL);
+    ret = avformat_find_stream_info(avFormatContext, NULL);
+    if (ret < 0) {
+        LOGE("OPEN", "find stream_info fail");
+        return ret;
+    }
+
     AVCodecContext *avCodecContext = nullptr;
 
     int stream_audio_index = -1;
@@ -52,19 +60,77 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
     SwrContext *swrContext = swr_alloc();
 
 
-    int sampleRate =
-    FILE *file = fopen(output_,"wb");
+    int in_sampleRate = avCodecContext->sample_rate;
+    int64_t in_ch_layout = avCodecContext->channel_layout;
+    AVSampleFormat in_sample_fmt = avCodecContext->sample_fmt;
+
+    uint64_t out_ch_layout = AV_CH_LAYOUT_STEREO;//左声道和右声道
+    AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+    int out_sample_rate = 48000;
+    /**
+     * * @param s               existing Swr context if available, or NULL if not
+     * @param out_ch_layout   output channel layout (AV_CH_LAYOUT_*)
+     * @param out_sample_fmt  output sample format (AV_SAMPLE_FMT_*).
+     * @param out_sample_rate output sample rate (frequency in Hz)
+     * @param in_ch_layout    input channel layout (AV_CH_LAYOUT_*)
+     * @param in_sample_fmt   input sample format (AV_SAMPLE_FMT_*).
+     * @param in_sample_rate  input sample rate (frequency in Hz)
+     * @param log_offset      logging level offset
+     * @param log_ctx         parent logging context, can be NULL
+     */
+    swr_alloc_set_opts(swrContext, out_ch_layout, out_sample_fmt, out_sample_rate,
+                       in_ch_layout, in_sample_fmt, in_sampleRate, 0, NULL);
 
 
-    while (av_read_frame(avFormatContext, avPacket) >= 0){
-        swr_convert(swrContext,)
+    //输出的文件指针
+    FILE *file = fopen(output_, "wb");
+
+    //每次写入文件的大小
+    uint8_t *outbufferb = (uint8_t *) av_malloc(2 * 48000);
+    //初始化转换上下文
+    swr_init(swrContext);
+
+    while (av_read_frame(avFormatContext, avPacket) >= 0) {
+        int ret;
+        avcodec_send_packet(avCodecContext, avPacket);
+        AVFrame *avFrame = av_frame_alloc();
+        ret = avcodec_receive_frame(avCodecContext, avFrame);
+        if (ret == AVERROR(EAGAIN)) {
+            continue;
+        } else if (ret < 0) {
+            LOGI("OVER", "解码完成")
+            break;
+        }
+
+        if (stream_audio_index != avPacket->stream_index) {
+            continue;
+        }
+        LOGI("OVER", "解码中")
+
+        //将封装数据 解析成pcm数据
+        swr_convert(swrContext, &outbufferb, 2 * 48000, (const uint8_t **) avFrame->data,
+                    avFrame->nb_samples);
 
 
+        //获取当前通道数
+        int nb_channels = av_get_channel_layout_nb_channels(out_ch_layout);
 
-        fwrite(,,,file);
+        //获取缓冲区大小
+        int out_buffer_size = (size_t) av_samples_get_buffer_size(NULL, nb_channels,
+                                                                     avFrame->nb_samples,
+                                                                     out_sample_fmt, 1);
+
+        //将outbufferb 写进文件 1是字节数
+        fwrite(outbufferb, 1, out_buffer_size, file);
+        av_frame_free(&avFrame);
     }
 
-
+    free(file);
+    swr_free(&swrContext);
+    av_free(outbufferb);
+    avcodec_close(avCodecContext);
+    avformat_close_input(&avFormatContext);
+    av_packet_free(&avPacket);
     env->ReleaseStringUTFChars(output, output_);
     env->ReleaseStringUTFChars(path, path_);
     return ret;
@@ -178,13 +244,15 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
     }
     ANativeWindow_release(nativeWindow);
     avcodec_close(avCodecContext);
+    av_packet_free(&avPacket);
+    avformat_close_input(&avFormatContext);
+    sws_freeContext(swsContext);
 //    delete (avPacketQueue);
     env->ReleaseStringUTFChars(path, path_);
 }
 
-
-JNINativeMethod method[] = {{"playVideo", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
-                            {"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I",     (void *) playAudio}};
+JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
+JNINativeMethod method[] = {{"playVideo", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
@@ -195,11 +263,16 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     }
     ret = env->RegisterNatives(env->FindClass(classPath), method,
                                sizeof(method) / sizeof(JNINativeMethod));
+
     if (ret != JNI_OK) {
         LOGE("regist", "regist_error");
     }
+
+    ret = env->RegisterNatives(env->FindClass(classAudioPath), methods,
+                               sizeof(methods) / sizeof(JNINativeMethod));
+
     if (ret != JNI_OK) {
-        LOGE("regist", "registSplashPath_error");
+        LOGE("regist", "registclassAudioPath _error");
     }
     avformat_network_init();
     return JNI_VERSION_1_6;
