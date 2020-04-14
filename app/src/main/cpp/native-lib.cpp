@@ -5,10 +5,12 @@
 #include <unistd.h>
 
 
+
 extern "C" {//指明当前C++代码调用其他C
 #include <libavutil/avutil.h>
 #include <include/libavformat/avformat.h>
 #include <include/libavutil/imgutils.h>
+#include <include/libswresample/swresample.h>
 #include <include/libswscale/swscale.h>
 }
 
@@ -16,8 +18,62 @@ JNIEnv *env = nullptr;
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
 
+extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstring output) {
+    int ret = -1;
+    const char *path_ = env->GetStringUTFChars(path, NULL);
+    const char *output_ = env->GetStringUTFChars(output, NULL);
+    AVFormatContext *avFormatContext = avformat_alloc_context();
 
-extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject surface) {
+    AVDictionary *avDictionary = nullptr;
+    av_dict_set(&avDictionary, "timeout", "3000000", 0);
+    ret = avformat_open_input(&avFormatContext, path_, NULL, &avDictionary);
+    if (ret != 0) {
+        LOGE("OPEN", "open video fail");
+        return ret;
+    }
+
+    avformat_find_stream_info(avFormatContext, NULL);
+    AVCodecContext *avCodecContext = nullptr;
+
+    int stream_audio_index = -1;
+    for (int i = 0; i < avFormatContext->nb_streams; ++i) {
+        if (avFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
+            stream_audio_index = i;
+            break;
+        }
+    }
+    AVCodecParameters *parameters = avFormatContext->streams[stream_audio_index]->codecpar;
+    AVCodec *avCodec = avcodec_find_decoder(parameters->codec_id);
+    avCodecContext = avcodec_alloc_context3(avCodec);
+    avcodec_parameters_to_context(avCodecContext, parameters);
+    avcodec_open2(avCodecContext, avCodec, NULL);
+    AVPacket *avPacket = av_packet_alloc();
+
+    SwrContext *swrContext = swr_alloc();
+
+
+    int sampleRate =
+    FILE *file = fopen(output_,"wb");
+
+
+    while (av_read_frame(avFormatContext, avPacket) >= 0){
+        swr_convert(swrContext,)
+
+
+
+        fwrite(,,,file);
+    }
+
+
+    env->ReleaseStringUTFChars(output, output_);
+    env->ReleaseStringUTFChars(path, path_);
+    return ret;
+
+}
+
+
+
+extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     const char *path_ = env->GetStringUTFChars(path, NULL);//视频路径
 
     AVFormatContext *avFormatContext;
@@ -68,13 +124,8 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
     ANativeWindow_Buffer outBuffer;
 
 
-//    AvPacketQueue *avPacketQueue = new AvPacketQueue();
-
-
     while (av_read_frame(avFormatContext, avPacket) >= 0) {
         avcodec_send_packet(avCodecContext, avPacket);
-//        avPacketQueue->pushAvPacket(avPacket);
-//        avPacketQueue->popAvPacket();
 
         AVFrame *avFrame = av_frame_alloc();
         int res = avcodec_receive_frame(avCodecContext, avFrame);
@@ -121,7 +172,8 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
             memcpy(start + i * destStride, src_data + i * srcStride, destStride);
         }
         ANativeWindow_unlockAndPost(nativeWindow);
-        usleep(1000 * 16);
+//        usleep(1000 * 16);
+        usleep((unsigned long) (1000 * 40 * 1));
         av_frame_free(&avFrame);
     }
     ANativeWindow_release(nativeWindow);
@@ -131,9 +183,8 @@ extern "C" JNIEXPORT jint play(JNIEnv *env, jobject obj, jstring path, jobject s
 }
 
 
-
-
-JNINativeMethod method[] = {{"play", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) play}};
+JNINativeMethod method[] = {{"playVideo", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
+                            {"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I",     (void *) playAudio}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
@@ -151,9 +202,6 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
         LOGE("regist", "registSplashPath_error");
     }
     avformat_network_init();
-
-    //动态注册方法 一定要返回当前的 JNI_VERSION 否则会报错、
-    // （UnsatisfiedLinkError: Bad JNI version returned from JNI_OnLoad）
     return JNI_VERSION_1_6;
 }
 

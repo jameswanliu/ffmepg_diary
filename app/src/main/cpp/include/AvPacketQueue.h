@@ -17,13 +17,8 @@ class AvPacketQueue {
 
 public:
     AvPacketQueue();
-
     ~AvPacketQueue();
     queue<AVPacket*> avPacketQueue;
-    pthread_cond_t condt;
-    pthread_mutex_t mutex;
-    pthread_t productThread;
-    pthread_t consumerThread;
     bool exitFlag;
     void* pushAvPacket(void *data);
     void* popAvPacket(void *data);

@@ -22,4 +22,10 @@ class VideoDecodeActivity : AppCompatActivity() {
             stephenPlayer.startPlay(ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4")
         }
     }
+
+
+    override fun onDestroy() {
+        stephenPlayer.onRelease()
+        super.onDestroy()
+    }
 }
