@@ -85,7 +85,7 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
     //输出的文件指针
     FILE *file = fopen(output_, "wb");
 
-    //每次写入文件的大小
+    //每一帧写入文件的大小
     uint8_t *outbufferb = (uint8_t *) av_malloc(2 * 48000);
     //初始化转换上下文
     swr_init(swrContext);
@@ -116,7 +116,7 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
         int nb_channels = av_get_channel_layout_nb_channels(out_ch_layout);
 
         //获取缓冲区大小
-        int out_buffer_size = (size_t) av_samples_get_buffer_size(NULL, nb_channels,
+        int out_buffer_size = av_samples_get_buffer_size(NULL, nb_channels,
                                                                      avFrame->nb_samples,
                                                                      out_sample_fmt, 1);
 
@@ -163,7 +163,6 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
         return ret;
     }
     AVCodec *avCodec = nullptr;
-    avCodecContext = avcodec_alloc_context3(avCodec);
     int index = -1;
     for (int i = 0; avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
         if (avFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -171,15 +170,19 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
             break;
         }
     }
-    AVCodecParameters *parameters = avFormatContext->streams[index]->codecpar;
+    AVCodecParameters *parameters = avFormatContext->streams[index]->codecpar;//实例化解码器参数
     avCodec = avcodec_find_decoder(parameters->codec_id);//查找视频解码器
-    avcodec_parameters_to_context(avCodecContext, parameters);
+    avCodecContext = avcodec_alloc_context3(avCodec);
+    avcodec_parameters_to_context(avCodecContext, parameters);//将解码参数设置到解码器上下文中
     AVPacket *avPacket = av_packet_alloc();
     ret = avcodec_open2(avCodecContext, avCodec, NULL);//打开视频编码器
     if (ret != JNI_OK) {
         LOGE("AVCODE OPEN", "avcode open error");
         return ret;
     }
+
+
+    //实例化转换上下文
     SwsContext *swsContext = sws_getContext(avCodecContext->width, avCodecContext->height,
                                             avCodecContext->pix_fmt,
                                             avCodecContext->width, avCodecContext->height,
