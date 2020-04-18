@@ -14,11 +14,22 @@ import org.reactivestreams.Subscription
  */
 
 
-class StephenPlayer(surfaceView: SurfaceView) : SurfaceHolder.Callback {
+class StephenPlayer(
+    surfaceView: SurfaceView,
+    val onPrepare: () -> Unit,
+    val onError: (Int) -> Unit,
+    val onProgress: (Int) -> Unit
+) : SurfaceHolder.Callback {
 
     lateinit var surfaceHolder: SurfaceHolder
 
     external fun playVideo(path: String, surface: Surface): Int
+
+    external fun native_prepare(path: String,surface: Surface): Int
+    external fun native_start()
+    external fun native_initial()
+
+
     var subscriberList = arrayListOf<Disposable>()
 
     fun startPlay(path: String) {
@@ -37,14 +48,24 @@ class StephenPlayer(surfaceView: SurfaceView) : SurfaceHolder.Callback {
         surfaceHolder = holder
     }
 
-    override fun surfaceDestroyed(holder: SurfaceHolder?) {
+
+    fun prepare() {
+        onPrepare()
     }
 
-    override fun surfaceCreated(holder: SurfaceHolder) {
 
+    fun error(code: Int) {
+        onError(code)
     }
 
-    fun onRelease(){
+    fun progress(progress: Int) {
+        onProgress(progress)
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder?) = Unit
+    override fun surfaceCreated(holder: SurfaceHolder) = Unit
+
+    fun onRelease() {
         subscriberList.forEach {
             it.dispose()
         }

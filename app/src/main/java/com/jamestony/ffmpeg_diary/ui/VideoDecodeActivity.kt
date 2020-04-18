@@ -17,12 +17,26 @@ class VideoDecodeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_decode)
-        stephenPlayer = StephenPlayer(surface)
+        stephenPlayer = StephenPlayer(surface, ::onPrepare, ::onError, ::onProgress)
         acb.setOnClickListener {
             stephenPlayer.startPlay(ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4")
         }
     }
 
+
+    fun onProgress(progress: Int) {
+
+    }
+
+
+    fun onError(code: Int) {
+
+    }
+
+
+    fun onPrepare() {
+
+    }
 
     override fun onDestroy() {
         stephenPlayer.onRelease()

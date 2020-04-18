@@ -5,11 +5,20 @@
 #ifndef FFMPEG_DIARY_AUDIOCHANEL_H
 #define FFMPEG_DIARY_AUDIOCHANEL_H
 
-
 #include "BaseChanel.h"
 
-class AudioChanel: BaseChanel {
+class AudioChanel : BaseChanel {
+public:
+    AudioChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext)
+            : BaseChanel(chanelId, javaCallHelper, avCodecContext) {
 
+    }
+
+    ~AudioChanel();
+
+    virtual void start();
+
+    virtual void stop();
 };
 
 
