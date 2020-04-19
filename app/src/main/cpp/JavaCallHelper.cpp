@@ -10,8 +10,8 @@ JavaCallHelper::JavaCallHelper(JavaVM *vm, JNIEnv *env, jobject obj) : vm(vm), e
     jobj = env->NewGlobalRef(obj);
     jclass jcls = env->GetObjectClass(jobj);
     jonErrorId = env->GetMethodID(jcls, "error", "(I)V");
-    jonPrepareId = env->GetMethodID(jcls, "error", "()V");
-    jonProgressId = env->GetMethodID(jcls, "error", "(I)V");
+    jonPrepareId = env->GetMethodID(jcls, "prepare", "()V");
+    jonProgressId = env->GetMethodID(jcls, "progress", "(I)V");
 }
 
 

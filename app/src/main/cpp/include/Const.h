@@ -5,7 +5,7 @@
 #ifndef FFMPEG_DIARY_CONST_H
 #define FFMPEG_DIARY_CONST_H
 
-#define delete(obj) if(obj){delete(obj); obj = 0;}
+#define DELETE(obj) if(obj){delete(obj); obj = 0;}
 
 
 #define THREAD_MAIN 1

@@ -3,6 +3,10 @@
 //
 
 #include "AudioChanel.h"
+extern "C"{
+#include "include/libavcodec/avcodec.h"
+}
+
 
 
 AudioChanel::AudioChanel(int chanelId, JavaCallHelper *javaCallHelper,

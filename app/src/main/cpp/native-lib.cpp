@@ -30,6 +30,64 @@ static const char *classAudioPath = "com/jamestony/ffmpeg_diary/player/SteAudioP
 
 using namespace std;
 
+
+/**
+ * 将VideoChanel 解压的数据对调到native 层 给nativewindow 进行渲染
+ * @param data
+ * @param lines
+ * @param w
+ * @param h
+ */
+void renderFrame(uint8_t *data, int lines, int w, int h) {
+    ANativeWindow_setBuffersGeometry(nativeWindow, w, h,
+                                     WINDOW_FORMAT_RGBA_8888);
+    ANativeWindow_Buffer outBuffer;
+    if(ANativeWindow_lock(nativeWindow, &outBuffer, NULL)){
+        ANativeWindow_release(nativeWindow);
+        nativeWindow = 0;
+        return;
+    }
+    //一行字节数
+    int destStride = outBuffer.stride * 4;
+    //开始地址 需要被赋值的指针
+    uint8_t *start = static_cast<uint8_t *>(outBuffer.bits);
+    //被拷贝的行数
+    int srcStride = lines;
+    //被拷贝的指针
+    for (int i = 0; i < outBuffer.height; i++) {
+        //将srcdata 数据拷贝到 start
+        memcpy(start + i * destStride, data + i * srcStride, destStride);
+    }
+    ANativeWindow_unlockAndPost(nativeWindow);
+}
+
+
+extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
+    stephenController = new StephenController();
+}
+
+
+
+extern "C" JNIEXPORT jint native_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
+    if (nativeWindow) {
+        ANativeWindow_release(nativeWindow);
+        nativeWindow = 0;
+    }
+    nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
+    stephenController->setRenderFrame(renderFrame);
+    stephenController->initalFFmpeg(javavm, env, obj, path);
+}
+
+extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
+    stephenController->start();
+}
+
+
+
+
+
+
+
 extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstring output) {
     int ret = -1;
     const char *path_ = env->GetStringUTFChars(path, NULL);
@@ -148,28 +206,6 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
 
 
 
-extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
-    stephenController = new StephenController();
-}
-
-
-
-extern "C" JNIEXPORT jint native_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
-    if (nativeWindow) {
-        ANativeWindow_release(nativeWindow);
-        nativeWindow = 0;
-    }
-    nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
-    stephenController->initalFFmpeg(javavm,env,obj ,path);
-}
-
-extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
-
-}
-
-
-
-
 
 extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     const char *path_ = env->GetStringUTFChars(path, NULL);//视频路径
@@ -279,6 +315,7 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
     }
     ANativeWindow_release(nativeWindow);
     avcodec_close(avCodecContext);
+
     av_packet_free(&avPacket);
     avformat_close_input(&avFormatContext);
     sws_freeContext(swsContext);
@@ -288,8 +325,8 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
 
 JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
 JNINativeMethod method[] = {{"playVideo",      "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
-                            {"native_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) native_prepare},
-                            {"native_start",   "()V",                       (void *) native_start},
+                            {"native_video_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) native_video_prepare},
+                            {"native_start",   "()V",                                         (void *) native_start},
                             {"native_initial", "()V",                                         (void *) native_initial}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {

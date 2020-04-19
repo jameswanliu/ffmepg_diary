@@ -23,21 +23,29 @@ public:
     StephenController();
 
     ~StephenController();
-
-    AudioChanel *audioChanel;
-    pthread_t pid_create;
-    pthread_cond_t condt;
-    JavaCallHelper *javaCallHelper;
-    const char *url;
-    pthread_mutex_t mutex;
-    VideoChanel *videoChanel;
-    int audio_stream_index;
-    AVCodecContext *video_codec_context;
+    void setRenderFrame(RenderFrame renderFrame1);
 
     int prepareFFmpeg();
 
-    void initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj,jstring path);
-    void startPlay();
+    void initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj, jstring path);
+
+    void dispatchPacket();
+
+    void start();
+private:
+    int isPlaying;
+    pthread_t pid_create;
+    pthread_t pid_dispatch_packet;
+    JavaCallHelper *javaCallHelper;
+    AudioChanel *audioChanel;
+    RenderFrame renderFrame;
+    const char *url;
+    pthread_mutex_t mutex;
+    VideoChanel *videoChanel;
+    int index;
+    AVCodecContext *video_codec_context;
+
+
 };
 
 

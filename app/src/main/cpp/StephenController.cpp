@@ -7,13 +7,16 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <include/Const.h>
-#include "include/StephenController.h"
 
-StephenController::StephenController() {
+extern "C" {
+#include <include/libavutil/time.h>
 }
 
-void StephenController::startPlay() {
+#include "include/StephenController.h"
 
+AVFormatContext *avFormatContext;
+
+StephenController::StephenController() {
 }
 
 
@@ -24,16 +27,15 @@ void *prepare(void *arg) {
 }
 
 
-void StephenController::initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj,jstring path) {
-    url = env->GetStringUTFChars(path,NULL);
+void StephenController::initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj, jstring path) {
+    url = env->GetStringUTFChars(path, NULL);
     javaCallHelper = new JavaCallHelper(vm, env, obj);
     pthread_create(&pid_create, NULL, prepare, this);
-    env->ReleaseStringUTFChars(path,url);
+    env->ReleaseStringUTFChars(path, url);
 }
 
 
 int StephenController::prepareFFmpeg() {
-    AVFormatContext *avFormatContext;
     int ret = 1;
     avFormatContext = avformat_alloc_context();
     AVCodecContext *avCodecContext = nullptr;
@@ -51,7 +53,8 @@ int StephenController::prepareFFmpeg() {
     }
     AVCodec *avCodec = nullptr;
     AVCodecParameters *parameters = nullptr;
-    int index = -1;
+    int vedioIndex = -1;
+    int audioIndex = -1;
     for (int i = 0; avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
         int type = avFormatContext->streams[i]->codecpar->codec_type;
         parameters = avFormatContext->streams[index]->codecpar;//实例化解码器参数
@@ -63,6 +66,12 @@ int StephenController::prepareFFmpeg() {
         if (!avCodec) {
             javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
             return ret;
+        }
+
+        if (type == AVMEDIA_TYPE_VIDEO) {
+            vedioIndex = i;
+        } else if (type == AVMEDIA_TYPE_AUDIO) {
+            audioIndex = i;
         }
 
     }
@@ -78,10 +87,11 @@ int StephenController::prepareFFmpeg() {
     }
 
     if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-        audioChanel = new AudioChanel(parameters->codec_id, javaCallHelper, avCodecContext);
+        audioChanel = new AudioChanel(audioIndex, javaCallHelper, avCodecContext);
     }
     if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-        videoChanel = new VideoChanel(parameters->codec_id, javaCallHelper, avCodecContext);
+        videoChanel = new VideoChanel(vedioIndex, javaCallHelper, avCodecContext);
+        videoChanel->setRenderFrame(renderFrame);
     }
 
     //回调初始化成功
@@ -90,8 +100,64 @@ int StephenController::prepareFFmpeg() {
 }
 
 
-StephenController::~StephenController() {
-    delete (url);
-    if (&mutex != NULL) pthread_mutex_destroy(&mutex);
-    if (&condt != NULL) pthread_cond_destroy(&condt);
+void *dispatchThread(void *args) {
+    StephenController *stephenController = static_cast<StephenController *>(args);
+    stephenController->dispatchPacket();
+    return 0;
 }
+
+
+/**
+ * 生产packet 放入队列
+ */
+void StephenController::dispatchPacket() {
+    int ret = 0;
+    while (isPlaying) {
+        if (audioChanel && audioChanel->avpacketQueue.size() > 100) {
+            av_usleep(1000 * 10);//生产快于渲染 所以延迟10毫秒
+            continue;
+        }
+
+        if (videoChanel && videoChanel->avpacketQueue.size() > 100) {
+            av_usleep(1000 * 10);
+            continue;
+        }
+        AVPacket *avPacket = av_packet_alloc();
+        ret = av_read_frame(avFormatContext, avPacket);
+
+        if (ret == 0) {
+            if (audioChanel && avPacket->stream_index == audioChanel->chanelId) {
+                audioChanel->avpacketQueue.enQueue(avPacket);
+            } else if (videoChanel && avPacket->stream_index == videoChanel->chanelId) {
+                videoChanel->avpacketQueue.enQueue(avPacket);
+            }
+        } else if (ret == AVERROR_EOF) {
+            if (audioChanel->avpacketQueue.empty() && audioChanel->avFrameQueue.empty()
+                && videoChanel->avpacketQueue.empty() && videoChanel->avFrameQueue.empty()) {
+                LOGI("controller", "解压完毕");
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    isPlaying = 0;
+    audioChanel->stop();
+    videoChanel->stop();
+}
+
+
+void StephenController::setRenderFrame(RenderFrame renderFrame1) {
+    this->renderFrame = renderFrame1;
+}
+
+/**
+ * 开辟解码线程
+ */
+void StephenController::start() {
+    isPlaying = 1;
+    pthread_create(&pid_dispatch_packet, NULL, dispatchThread, this);
+}
+
+

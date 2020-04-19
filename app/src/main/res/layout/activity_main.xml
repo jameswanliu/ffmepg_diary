@@ -5,6 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context=".MainActivity">
+
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/acb_video_decode"
         android:layout_width="match_parent"
@@ -16,4 +17,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="音频解码" />
+
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/acb_stephen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="stephenplayer" />
 </LinearLayout>
