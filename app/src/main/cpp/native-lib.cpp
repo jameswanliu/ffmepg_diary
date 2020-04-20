@@ -3,7 +3,6 @@
 #include "androidlog.h"
 #include <android/native_window_jni.h>
 #include <unistd.h>
-#include <__std_stream>
 #include <StephenController.h>
 
 
@@ -15,14 +14,16 @@ extern "C" {//指明当前C++代码调用其他C
 #include <include/libswscale/swscale.h>
 }
 
-JNIEnv *env = nullptr;
+JNIEnv *env;
 
 
 StephenController *stephenController;
 
-JavaVM *javavm = nullptr;
+JavaCallHelper *javaCallHelper;
 
-ANativeWindow *nativeWindow = nullptr;
+JavaVM *javavm;
+
+ANativeWindow *nativeWindow;
 
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
@@ -42,7 +43,7 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
     ANativeWindow_setBuffersGeometry(nativeWindow, w, h,
                                      WINDOW_FORMAT_RGBA_8888);
     ANativeWindow_Buffer outBuffer;
-    if(ANativeWindow_lock(nativeWindow, &outBuffer, NULL)){
+    if (ANativeWindow_lock(nativeWindow, &outBuffer, NULL)) {
         ANativeWindow_release(nativeWindow);
         nativeWindow = 0;
         return;
@@ -63,19 +64,22 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
 
 
 extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
-    stephenController = new StephenController();
+    javaCallHelper = new JavaCallHelper(javavm, env, obj);
+    stephenController = new StephenController(javaCallHelper);
 }
 
 
 
-extern "C" JNIEXPORT jint native_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
+extern "C" JNIEXPORT jint
+native_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     if (nativeWindow) {
         ANativeWindow_release(nativeWindow);
         nativeWindow = 0;
     }
     nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
     stephenController->setRenderFrame(renderFrame);
-    stephenController->initalFFmpeg(javavm, env, obj, path);
+    stephenController->initalFFmpeg(env, path);
+    return 1;
 }
 
 extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
@@ -84,17 +88,14 @@ extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
 
 
 
-
-
-
-
 extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstring output) {
+    avformat_network_init();
     int ret = -1;
     const char *path_ = env->GetStringUTFChars(path, NULL);
     const char *output_ = env->GetStringUTFChars(output, NULL);
     AVFormatContext *avFormatContext = avformat_alloc_context();
 
-    AVDictionary *avDictionary = nullptr;
+    AVDictionary *avDictionary;
     av_dict_set(&avDictionary, "timeout", "3000000", 0);
     ret = avformat_open_input(&avFormatContext, path_, NULL, &avDictionary);
     if (ret != 0) {
@@ -108,7 +109,7 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
         return ret;
     }
 
-    AVCodecContext *avCodecContext = nullptr;
+    AVCodecContext *avCodecContext;
 
     int stream_audio_index = -1;
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {
@@ -209,15 +210,15 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
 
 extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     const char *path_ = env->GetStringUTFChars(path, NULL);//视频路径
-
+    avformat_network_init();
     AVFormatContext *avFormatContext;
     ANativeWindow *nativeWindow;
     nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
 
     int ret = -1;
     avFormatContext = avformat_alloc_context();
-    AVCodecContext *avCodecContext = nullptr;
-    AVDictionary *avDictionary = nullptr;
+    AVCodecContext *avCodecContext;
+    AVDictionary *avDictionary;
     av_dict_set(&avDictionary, "timeout", "3000000", 0);
     ret = avformat_open_input(&avFormatContext, path_, NULL, &avDictionary);
     if (ret != 0) {
@@ -230,7 +231,7 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
         LOGE("FIND", "find stream error");
         return ret;
     }
-    AVCodec *avCodec = nullptr;
+    AVCodec *avCodec;
     int index = -1;
     for (int i = 0; avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
         if (avFormatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -324,10 +325,10 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
 }
 
 JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
-JNINativeMethod method[] = {{"playVideo",      "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
+JNINativeMethod method[] = {{"playVideo",            "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
                             {"native_video_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) native_video_prepare},
-                            {"native_start",   "()V",                                         (void *) native_start},
-                            {"native_initial", "()V",                                         (void *) native_initial}};
+                            {"native_start",         "()V",                                         (void *) native_start},
+                            {"native_initial",       "()V",                                         (void *) native_initial}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     javavm = vm;
@@ -348,7 +349,6 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     if (ret != JNI_OK) {
         LOGE("regist", "registclassAudioPath _error");
     }
-    avformat_network_init();
     return JNI_VERSION_1_6;
 }
 

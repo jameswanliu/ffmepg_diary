@@ -20,14 +20,18 @@ using namespace std;
 class StephenController {
 
 public:
-    StephenController();
+    StephenController(JavaCallHelper *javaCallHelper);
 
-    ~StephenController();
+    ~StephenController(){
+        delete[](javaCallHelper,audioChanel,videoChanel,url);
+        avcodec_free_context(&video_codec_context);
+        avformat_free_context(avFormatContext);
+    }
     void setRenderFrame(RenderFrame renderFrame1);
 
     int prepareFFmpeg();
 
-    void initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj, jstring path);
+    void initalFFmpeg(JNIEnv *env, jstring path);
 
     void dispatchPacket();
 
@@ -44,7 +48,7 @@ private:
     VideoChanel *videoChanel;
     int index;
     AVCodecContext *video_codec_context;
-
+    AVFormatContext *avFormatContext;
 
 };
 

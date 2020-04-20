@@ -14,9 +14,8 @@ extern "C" {
 
 #include "include/StephenController.h"
 
-AVFormatContext *avFormatContext;
-
-StephenController::StephenController() {
+StephenController::StephenController(JavaCallHelper *javaCallHelper) {
+    this->javaCallHelper = javaCallHelper;
 }
 
 
@@ -27,21 +26,28 @@ void *prepare(void *arg) {
 }
 
 
-void StephenController::initalFFmpeg(JavaVM *vm, JNIEnv *env, jobject obj, jstring path) {
-    url = env->GetStringUTFChars(path, NULL);
-    javaCallHelper = new JavaCallHelper(vm, env, obj);
+void StephenController::initalFFmpeg(JNIEnv *env, jstring path) {
+    const char *path_ = env->GetStringUTFChars(path, NULL);
+    url = new char[strlen(path_) + 1];
+    strcpy(const_cast<char *>(url), path_);
     pthread_create(&pid_create, NULL, prepare, this);
-    env->ReleaseStringUTFChars(path, url);
+//    int ret = prepareFFmpeg();
+//    LOGI("ret", "prepareFFmpeg = %d" ,ret);
+    env->ReleaseStringUTFChars(path, path_);
 }
 
 
 int StephenController::prepareFFmpeg() {
-    int ret = 1;
+    int ret = -1;
+    avformat_network_init();
     avFormatContext = avformat_alloc_context();
-    AVCodecContext *avCodecContext = nullptr;
-    AVDictionary *avDictionary = nullptr;
-    av_dict_set(&avDictionary, "timeout", "3000000", 0);
-    ret = avformat_open_input(&avFormatContext, url, NULL, &avDictionary);
+    AVDictionary *opts = NULL;
+    ret = av_dict_set(&opts, "timeout", "3000000", 0);
+    if (ret < 0) {
+        javaCallHelper->callbackError(THREAD_CHILD, FFMEPG_SET_AVDICTIONARY_FAIL);
+        return ret;
+    }
+    ret = avformat_open_input(&avFormatContext, url, NULL, &opts);
     if (ret != 0) {
         javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_FILE);
         return ret;
@@ -51,13 +57,13 @@ int StephenController::prepareFFmpeg() {
         javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAM);
         return ret;
     }
-    AVCodec *avCodec = nullptr;
-    AVCodecParameters *parameters = nullptr;
+    AVCodec *avCodec = NULL;
+    AVCodecParameters *parameters = NULL;
     int vedioIndex = -1;
     int audioIndex = -1;
-    for (int i = 0; avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
+    for (int i = 0; i < avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
         int type = avFormatContext->streams[i]->codecpar->codec_type;
-        parameters = avFormatContext->streams[index]->codecpar;//实例化解码器参数
+        parameters = avFormatContext->streams[i]->codecpar;//实例化解码器参数
         if (!parameters) {
             javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_DECODE_PARAMS_CONTEXT_FAIL);
             return ret;
@@ -73,29 +79,31 @@ int StephenController::prepareFFmpeg() {
         } else if (type == AVMEDIA_TYPE_AUDIO) {
             audioIndex = i;
         }
-
+        if (audioIndex != -1 && vedioIndex != -1) {
+            break;
+        }
     }
-    avCodecContext = avcodec_alloc_context3(avCodec);
-    if (!avCodecContext) {
+    video_codec_context = avcodec_alloc_context3(avCodec);
+    if (!video_codec_context) {
         javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_ALLOC_DECODE_CONTEXT_FAIL);
         return ret;
     }
-    ret = avcodec_open2(avCodecContext, avCodec, NULL);//打开视频编码器
+    ret = avcodec_open2(video_codec_context, avCodec, NULL);//打开视频编码器
     if (ret != JNI_OK) {
         javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
         return ret;
     }
 
     if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-        audioChanel = new AudioChanel(audioIndex, javaCallHelper, avCodecContext);
+        audioChanel = new AudioChanel(audioIndex, javaCallHelper, video_codec_context);
     }
     if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-        videoChanel = new VideoChanel(vedioIndex, javaCallHelper, avCodecContext);
+        videoChanel = new VideoChanel(vedioIndex, javaCallHelper, video_codec_context);
         videoChanel->setRenderFrame(renderFrame);
     }
-
     //回调初始化成功
     javaCallHelper->callbackPrepare(THREAD_CHILD);
+
     return ret;
 }
 
@@ -124,7 +132,6 @@ void StephenController::dispatchPacket() {
         }
         AVPacket *avPacket = av_packet_alloc();
         ret = av_read_frame(avFormatContext, avPacket);
-
         if (ret == 0) {
             if (audioChanel && avPacket->stream_index == audioChanel->chanelId) {
                 audioChanel->avpacketQueue.enQueue(avPacket);
@@ -157,7 +164,14 @@ void StephenController::setRenderFrame(RenderFrame renderFrame1) {
  */
 void StephenController::start() {
     isPlaying = 1;
+    if (videoChanel) {
+        videoChanel->start();
+    }
+    if(audioChanel){
+        audioChanel->start();
+    }
     pthread_create(&pid_dispatch_packet, NULL, dispatchThread, this);
+
 }
 
 

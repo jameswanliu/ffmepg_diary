@@ -19,7 +19,8 @@ class VideoDecodeActivity : AppCompatActivity() {
         setContentView(R.layout.activity_video_decode)
         stephenPlayer = StephenPlayer(surface, ::onPrepare, ::onError, ::onProgress)
         acb.setOnClickListener {
-            stephenPlayer.startPlay(ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4")
+            stephenPlayer.startPlay(ExternalStorageDirectoryPath
+                    + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4")
         }
     }
 

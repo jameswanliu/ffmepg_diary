@@ -18,7 +18,7 @@ using namespace std;
 template<typename T>
 class SafeQueue {
 
-    typedef void (*ReleaseHandle)(T t);
+    typedef void (*ReleaseHandle)(T &);
 
     typedef void(*SysncHandle)(queue<T> &);
 
@@ -43,7 +43,7 @@ public:
 
 
 
-    void enQueue(T &t){
+    void enQueue(T t){
 #ifdef C11
         lock_guard<mutex> lk(mt);
         if (work) {
@@ -104,8 +104,8 @@ public:
             ret = 1;
         }
         pthread_mutex_unlock(&mutex);
-        return ret;
 #endif
+        return ret;
     }
 
 

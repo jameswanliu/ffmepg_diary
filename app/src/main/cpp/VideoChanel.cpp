@@ -53,7 +53,7 @@ void VideoChanel::sysncFrame() {
     // 以及相应地填充指针和线条大小。必须使用 av_freep(&pointers[0]) 释放内存
     av_image_alloc(pointers, linesizes, avCodecContext->width, avCodecContext->height,
                    AV_PIX_FMT_RGBA, 1);
-    AVFrame *avFrame = nullptr;
+    AVFrame *avFrame = NULL;
     while (isPlay) {
         ret = avFrameQueue.deQueue(avFrame);
         if (!isPlay) {
@@ -69,7 +69,7 @@ void VideoChanel::sysncFrame() {
                   avFrame->linesize, 0, avFrame->height, pointers,
                   linesizes);
         renderFrame(pointers[0], linesizes[0], avCodecContext->width, avCodecContext->height);
-        av_usleep(16*1000000);
+        av_usleep(16 * 1000000);
         freeAvFrame(avFrame);
     }
 
@@ -90,8 +90,8 @@ void *decodeThread(void *args) {
 
 void VideoChanel::decodePacket() {
     int ret;
-    AVPacket *avPacket = nullptr;
-    AVFrame *frame = nullptr;
+    AVPacket *avPacket = NULL;
+    AVFrame *frame = NULL;
     while (isPlay) {
         if (!isPlay) {
             break;
@@ -121,12 +121,10 @@ void VideoChanel::decodePacket() {
             av_usleep(1000 * 10);
             continue;
         }
-        freeAvFrame(frame);
+//        freeAvFrame(frame);
     }
-
-
     freeAvPacket(avPacket);
-    freeAvFrame(frame);
+//    freeAvFrame(frame);
 }
 
 

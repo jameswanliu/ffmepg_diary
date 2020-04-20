@@ -10,7 +10,6 @@ import kotlinx.android.synthetic.main.activity_stephen_player.*
 
 class StephenPlayerActivity : AppCompatActivity() {
 
-
     lateinit var stephenPlayer: StephenPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -18,9 +17,14 @@ class StephenPlayerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_stephen_player)
         stephenPlayer = StephenPlayer(surface, ::onPrepare, ::onError, ::onProgress)
         stephenPlayer.native_initial()
-        stephenPlayer.native_video_prepare(
+        val ret = stephenPlayer.native_video_prepare(
             ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4"
         )
+        Log.i("ret", "ret = $ret")
+
+        acb.setOnClickListener {
+            stephenPlayer.native_start()
+        }
     }
 
 
