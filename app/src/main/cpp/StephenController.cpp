@@ -14,6 +14,24 @@ extern "C" {
 
 #include "include/StephenController.h"
 
+
+/**
+ * controller
+ * 作用：
+ *  1.开辟子线程初始化ffmpeg(
+ *     （1）初始化AvformatContext
+ *      (2) 设置打开文件参数AvDictionary
+ *      (3) 打开文件
+ *      (4) 找到文件中的音视频流信息
+ *      (5) 遍历avformatCotext 中的流 找到视频流 音频流
+ *      (6) 根据每个流找到 视频解码器参数AVCodecParameters
+ *      (7) 根据解码器参数 实例化解码器AvCodec
+ *      (8) 用解码器Avcodec 实例化解码器上下文AvCodecContext
+ *      (9) 将解码器参数AVCodecParameters与AvCodecContext 绑定
+ *      (10) 打开解码器avcodec_open)
+ *  2.开辟子线程将得到的avpacket 放入各自的音频队列和视频队列中
+ * @param javaCallHelper
+ */
 StephenController::StephenController(JavaCallHelper *javaCallHelper) {
     this->javaCallHelper = javaCallHelper;
 }

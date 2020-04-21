@@ -16,14 +16,14 @@ class StephenPlayerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_stephen_player)
         stephenPlayer = StephenPlayer(surface, ::onPrepare, ::onError, ::onProgress)
-        stephenPlayer.natives_initial()
-        val ret = stephenPlayer.natives_video_prepare(
+        stephenPlayer.native_initial()
+        val ret = stephenPlayer.native_video_prepare(
             ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4"
         )
         Log.i("ret", "ret = $ret")
-
         acb.setOnClickListener {
-            stephenPlayer.natives_start()
+            stephenPlayer.native_setSurface()
+            stephenPlayer.native_start()
         }
     }
 

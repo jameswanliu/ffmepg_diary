@@ -25,9 +25,10 @@ class StephenPlayer(
 
     external fun playVideo(path: String, surface: Surface): Int
 
-    external fun natives_video_prepare(path: String,surface: Surface = surfaceHolder.surface): Int
-    external fun natives_start()
-    external fun natives_initial()
+    external fun native_setSurface(surface: Surface = surfaceHolder.surface)
+    external fun native_video_prepare(path: String): Int
+    external fun native_start()
+    external fun native_initial()
 
     var subscriberList = arrayListOf<Disposable>()
 

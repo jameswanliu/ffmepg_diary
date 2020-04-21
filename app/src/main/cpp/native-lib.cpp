@@ -14,15 +14,15 @@ extern "C" {//指明当前C++代码调用其他C
 #include <include/libswscale/swscale.h>
 }
 
-JNIEnv *env;
+JNIEnv *env = NULL;
 
 
-StephenController *stephenController;
+StephenController *stephenController = NULL;
 
-JavaCallHelper *javaCallHelper;
+JavaCallHelper *javaCallHelper = NULL;
 
-JavaVM *javavm;
-ANativeWindow *nativeWindow;
+JavaVM *javavm = NULL;
+ANativeWindow *nativeWindow = NULL;
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
 static const char *classAudioPath = "com/jamestony/ffmpeg_diary/player/SteAudioPlayer";
@@ -39,6 +39,8 @@ using namespace std;
  */
 void renderFrame(uint8_t *data, int lines, int w, int h) {
     LOGI("renderFrame", "lines = %d", lines);
+    if (!nativeWindow)
+        return;
     ANativeWindow_setBuffersGeometry(nativeWindow, w, h,
                                      WINDOW_FORMAT_RGBA_8888);
     ANativeWindow_Buffer outBuffer;
@@ -64,7 +66,7 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
 }
 
 
-extern "C" JNIEXPORT void natives_initial(JNIEnv *env, jobject obj) {
+extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
     javaCallHelper = new JavaCallHelper(javavm, env, obj);
     stephenController = new StephenController(javaCallHelper);
 }
@@ -72,18 +74,13 @@ extern "C" JNIEXPORT void natives_initial(JNIEnv *env, jobject obj) {
 
 
 extern "C" JNIEXPORT jint
-natives_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
-    if (nativeWindow) {
-        ANativeWindow_release(nativeWindow);
-        nativeWindow = 0;
-    }
-    nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
+native_video_prepare(JNIEnv *env, jobject obj, jstring path) {
     stephenController->setRenderFrame(renderFrame);
     stephenController->initalFFmpeg(env, path);
     return 1;
 }
 
-extern "C" JNIEXPORT void natives_start(JNIEnv *env, jobject obj) {
+extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
     if (stephenController) stephenController->start();
 }
 
@@ -206,6 +203,13 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
 }
 
 
+extern "C" JNIEXPORT void setSurface(JNIEnv *env, jobject obj, jobject surface) {
+    if (nativeWindow) {
+        ANativeWindow_release(nativeWindow);
+        nativeWindow = 0;
+    }
+    nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
+}
 
 
 extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobject surface) {
@@ -323,9 +327,10 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
 
 JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
 JNINativeMethod method[] = {{"playVideo",            "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
-                            {"natives_video_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) natives_video_prepare},
-                            {"natives_start",         "()V",                                         (void *) natives_start},
-                            {"natives_initial",       "()V",                                         (void *) natives_initial}};
+                            {"native_video_prepare", "(Ljava/lang/String;)I",                       (void *) native_video_prepare},
+                            {"native_setSurface",    "(Landroid/view/Surface;)V",                   (void *) setSurface},
+                            {"native_start",         "()V",                                         (void *) native_start},
+                            {"native_initial",       "()V",                                         (void *) native_initial}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     javavm = vm;
