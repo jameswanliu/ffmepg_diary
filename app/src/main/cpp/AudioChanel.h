@@ -15,7 +15,13 @@ public:
 
     virtual void play();
 
+    void decodePacket();
+
+    void sysncPlay();
+
     virtual void stop();
+
+    int initOpensles();
 };
 
 
