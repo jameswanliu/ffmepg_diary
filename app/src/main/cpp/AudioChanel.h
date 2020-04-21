@@ -13,7 +13,7 @@ public:
 
     ~AudioChanel();
 
-    virtual void start();
+    virtual void play();
 
     virtual void stop();
 };

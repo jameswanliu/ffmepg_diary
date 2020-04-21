@@ -6,12 +6,11 @@
 #define FFMPEG_DIARY_SAFEQUEUE_H
 
 #include <pthread.h>
-
+#include <queue>
 #ifdef C11
 #include <thread>
 #endif
 
-#include "queue"
 
 using namespace std;
 
@@ -41,14 +40,25 @@ public:
 #endif
     }
 
-
-
-    void enQueue(T t){
+    void sync() {
 #ifdef C11
-        lock_guard<mutex> lk(mt);
+        lock_guard<mutex> lk(tx);
+        sysncHandle(queue);
+#else
+        pthread_mutex_lock(&mutex);
+        sysncHandle(queue);
+        pthread_mutex_unlock(&mutex);
+#endif
+
+    }
+
+
+    void enQueue(T t) {
+#ifdef C11
+        lock_guard<mutex> lk(tx);
         if (work) {
-            q.push(new_value);
-            cv.notify_one();
+            queue.push(new_value);
+            ca.notify_one();
         }
 #else
         pthread_mutex_lock(&mutex);
@@ -66,7 +76,7 @@ public:
 
     void setWork(int work) {
 #ifdef C11
-        lock_guard<mutex> lk(mt);
+        lock_guard<mutex> lk(tx);
         this->work = work;
 #else
         pthread_mutex_lock(&mutex);
@@ -78,18 +88,16 @@ public:
     }
 
 
-
-
-    int deQueue(T &q){
+    int deQueue(T &q) {
         int ret = 0;
 #ifdef C11
         //占用空间相对lock_guard 更大一点且相对更慢一点，但是配合条件必须使用它，更灵活
-        unique_lock<mutex> lk(mt);
+        unique_lock<mutex> lk(tx);
         //false则不阻塞 往下走
-        cv.wait(lk,[this]{return !work || !q.empty();});
-        if (!q.empty()) {
-            value = q.front();
-            q.pop();
+        ca.wait(lk,[this]{return !work || !queue.empty();});
+        if (!queue.empty()) {
+            value = queue.front();
+            queue.pop();
             ret = 1;
         }
 #else
@@ -105,13 +113,14 @@ public:
         }
         pthread_mutex_unlock(&mutex);
 #endif
+
         return ret;
     }
 
 
     void clear() {
 #ifdef C11
-        lock_guard<mutex> lk(mt);
+        lock_guard<mutex> lk(tx);
         int size = queue.size();
         for(int i = 0;i<size;i++){
             T t = queue.front();
@@ -122,7 +131,7 @@ public:
 #else
         pthread_mutex_lock(&mutex);
         int size = queue.size();
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; ++i) {
             T t = queue.front();
             releaseHandle(t);
             queue.pop();
@@ -138,7 +147,6 @@ public:
     int size() {
         return queue.size();
     }
-
 
     void setReleaseHandle(ReleaseHandle r) {
         releaseHandle = r;
@@ -162,8 +170,6 @@ private:
     queue<T> queue;
     ReleaseHandle releaseHandle;
     SysncHandle sysncHandle;
-
-
 };
 
 #endif

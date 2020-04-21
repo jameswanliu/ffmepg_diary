@@ -57,49 +57,46 @@ int StephenController::prepareFFmpeg() {
         javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAM);
         return ret;
     }
-    AVCodec *avCodec = NULL;
-    AVCodecParameters *parameters = NULL;
-    int vedioIndex = -1;
-    int audioIndex = -1;
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
-        int type = avFormatContext->streams[i]->codecpar->codec_type;
-        parameters = avFormatContext->streams[i]->codecpar;//实例化解码器参数
+        AVCodecParameters *parameters = avFormatContext->streams[i]->codecpar;//实例化解码器参数
         if (!parameters) {
             javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_DECODE_PARAMS_CONTEXT_FAIL);
             return ret;
         }
-        avCodec = avcodec_find_decoder(parameters->codec_id);//查找视频解码器
+        AVCodec *avCodec = avcodec_find_decoder(parameters->codec_id);//查找视频解码器
         if (!avCodec) {
             javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
             return ret;
         }
 
-        if (type == AVMEDIA_TYPE_VIDEO) {
-            vedioIndex = i;
-        } else if (type == AVMEDIA_TYPE_AUDIO) {
-            audioIndex = i;
+        AVCodecContext *video_codec_context = avcodec_alloc_context3(avCodec);
+        if (!video_codec_context) {
+            javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_ALLOC_DECODE_CONTEXT_FAIL);
+            return ret;
         }
-        if (audioIndex != -1 && vedioIndex != -1) {
-            break;
+        ret = avcodec_parameters_to_context(video_codec_context,
+                                            parameters);//将解码参数设置到AVCodecContext 中
+        if (ret < 0) {
+            javaCallHelper->callbackError(THREAD_CHILD, FFMEPG_AVCODEC_PARAMETERS_TO_CONTEXT);
+            return ret;
         }
-    }
-    video_codec_context = avcodec_alloc_context3(avCodec);
-    if (!video_codec_context) {
-        javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_ALLOC_DECODE_CONTEXT_FAIL);
-        return ret;
-    }
-    ret = avcodec_open2(video_codec_context, avCodec, NULL);//打开视频编码器
-    if (ret != JNI_OK) {
-        javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
-        return ret;
-    }
 
-    if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-        audioChanel = new AudioChanel(audioIndex, javaCallHelper, video_codec_context);
-    }
-    if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
-        videoChanel = new VideoChanel(vedioIndex, javaCallHelper, video_codec_context);
-        videoChanel->setRenderFrame(renderFrame);
+        ret = avcodec_open2(video_codec_context, avCodec, NULL);//打开视频编码器
+        if (ret != JNI_OK) {
+            javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
+            return ret;
+        }
+
+
+        if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
+            LOGI("audioChanel=", "index = %d", i);
+            audioChanel = new AudioChanel(i, javaCallHelper, video_codec_context);
+        }
+        if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
+            LOGI("videoChanel=", "index = %d", i);
+            videoChanel = new VideoChanel(i, javaCallHelper, video_codec_context);
+            videoChanel->setRenderFrame(renderFrame);
+        }
     }
     //回调初始化成功
     javaCallHelper->callbackPrepare(THREAD_CHILD);
@@ -134,8 +131,10 @@ void StephenController::dispatchPacket() {
         ret = av_read_frame(avFormatContext, avPacket);
         if (ret == 0) {
             if (audioChanel && avPacket->stream_index == audioChanel->chanelId) {
+                LOGI("audio stream_index", "index = %d", avPacket->stream_index);
                 audioChanel->avpacketQueue.enQueue(avPacket);
             } else if (videoChanel && avPacket->stream_index == videoChanel->chanelId) {
+                LOGI("video stream_index", "index = %d", avPacket->stream_index);
                 videoChanel->avpacketQueue.enQueue(avPacket);
             }
         } else if (ret == AVERROR_EOF) {
@@ -148,7 +147,6 @@ void StephenController::dispatchPacket() {
             break;
         }
     }
-
     isPlaying = 0;
     audioChanel->stop();
     videoChanel->stop();
@@ -164,14 +162,13 @@ void StephenController::setRenderFrame(RenderFrame renderFrame1) {
  */
 void StephenController::start() {
     isPlaying = 1;
-    if (videoChanel) {
-        videoChanel->start();
+    if (audioChanel) {
+        audioChanel->play();
     }
-    if(audioChanel){
-        audioChanel->start();
+    if (videoChanel) {
+        videoChanel->play();
     }
     pthread_create(&pid_dispatch_packet, NULL, dispatchThread, this);
-
 }
 
 

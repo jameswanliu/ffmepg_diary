@@ -32,7 +32,7 @@ VideoChanel::~VideoChanel() {
 
 
 void *sysncFrameThread(void *args) {
-    VideoChanel *videoChanel = static_cast<VideoChanel *>(args);
+    VideoChanel *videoChanel = static_cast<VideoChanel*>(args);
     videoChanel->sysncFrame();
     return 0;
 }
@@ -47,7 +47,7 @@ void VideoChanel::sysncFrame() {
     SwsContext *swsContext = sws_getContext(avCodecContext->width, avCodecContext->height,
                                             avCodecContext->pix_fmt,
                                             avCodecContext->width, avCodecContext->height,
-                                            AV_PIX_FMT_RGBA, SWS_BICUBIC, NULL, NULL, NULL);
+                                            AV_PIX_FMT_RGBA, SWS_BILINEAR, NULL, NULL, NULL);
 
     //分配大小为w和h、像素格式为pix_fmt的图像，
     // 以及相应地填充指针和线条大小。必须使用 av_freep(&pointers[0]) 释放内存
@@ -55,7 +55,9 @@ void VideoChanel::sysncFrame() {
                    AV_PIX_FMT_RGBA, 1);
     AVFrame *avFrame = NULL;
     while (isPlay) {
+        LOGI("avFrame isPlay", "isPlay = %d", isPlay);
         ret = avFrameQueue.deQueue(avFrame);
+        LOGI("deQueueavFrame", "ret = %d", ret);
         if (!isPlay) {
             break;
         }
@@ -69,7 +71,7 @@ void VideoChanel::sysncFrame() {
                   avFrame->linesize, 0, avFrame->height, pointers,
                   linesizes);
         renderFrame(pointers[0], linesizes[0], avCodecContext->width, avCodecContext->height);
-        av_usleep(16 * 1000000);
+        av_usleep(16 * 1000);
         freeAvFrame(avFrame);
     }
 
@@ -93,12 +95,13 @@ void VideoChanel::decodePacket() {
     AVPacket *avPacket = NULL;
     AVFrame *frame = NULL;
     while (isPlay) {
+        LOGI("isPlay", "ret = %d", isPlay);
         if (!isPlay) {
             break;
         }
         ret = avpacketQueue.deQueue(avPacket);
-
-        if (ret != 0) {
+        LOGI("deQueueavPacket", "ret = %d", ret);
+        if (!ret) {
             continue;
         }
 
@@ -108,6 +111,7 @@ void VideoChanel::decodePacket() {
         }
 
         ret = avcodec_send_packet(avCodecContext, avPacket);
+        LOGI("avcodec_send_packet", "ret = %d", ret);
         freeAvPacket(avPacket);
         if (ret == AVERROR(EAGAIN)) {
             continue;
@@ -115,32 +119,28 @@ void VideoChanel::decodePacket() {
             break;
         }
         frame = av_frame_alloc();
-        avcodec_receive_frame(avCodecContext, frame);
+        ret = avcodec_receive_frame(avCodecContext, frame);
+        LOGI("avcodec_receive_frame", "ret = %d", ret);
         avFrameQueue.enQueue(frame);
         while (isPlay && avFrameQueue.size() > 100) {
             av_usleep(1000 * 10);
             continue;
         }
-//        freeAvFrame(frame);
     }
     freeAvPacket(avPacket);
-//    freeAvFrame(frame);
 }
 
 
-void VideoChanel::start() {
+void VideoChanel::play() {
+    isPlay = 1;
     avpacketQueue.setWork(1);
     avFrameQueue.setWork(1);
-    isPlay = 1;
     pthread_create(&decode, NULL, decodeThread, this);
     pthread_create(&syscnsizePlay, NULL, sysncFrameThread, this);
 }
 
 
 void VideoChanel::stop() {
-    avpacketQueue.setWork(0);
-    avFrameQueue.setWork(0);
-    isPlay = 0;
 }
 
 void VideoChanel::setRenderFrame(RenderFrame renderFrame1) {

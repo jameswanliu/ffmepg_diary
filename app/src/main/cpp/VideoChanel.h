@@ -28,7 +28,7 @@ public:
 
     void sysncFrame();
 
-    virtual void start();
+    virtual void play();
 
     virtual void stop();
 

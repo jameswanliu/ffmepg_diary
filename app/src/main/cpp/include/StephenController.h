@@ -24,7 +24,6 @@ public:
 
     ~StephenController(){
         delete[](javaCallHelper,audioChanel,videoChanel,url);
-        avcodec_free_context(&video_codec_context);
         avformat_free_context(avFormatContext);
     }
     void setRenderFrame(RenderFrame renderFrame1);
@@ -47,7 +46,6 @@ private:
     pthread_mutex_t mutex;
     VideoChanel *videoChanel;
     int index;
-    AVCodecContext *video_codec_context;
     AVFormatContext *avFormatContext;
 
 };

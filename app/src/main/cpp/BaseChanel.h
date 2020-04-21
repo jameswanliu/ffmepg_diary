@@ -34,7 +34,10 @@ public:
     AVCodecContext *avCodecContext;
     BaseChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext)
             : chanelId(chanelId), javaCallHelper(javaCallHelper), avCodecContext(avCodecContext) {
-
+        avpacketQueue.setReleaseHandle(freeAvPacket);
+        avFrameQueue.setReleaseHandle(freeAvFrame);
+        avpacketQueue.clear();
+        avFrameQueue.clear();
     }
 
     ~BaseChanel() {
@@ -48,15 +51,23 @@ public:
     }
 
 
-    static void freeAvPacket(AVPacket *avPacket) {
+
+    /**
+     *引用传递
+     * @param avPacket
+     */
+    static void freeAvPacket(AVPacket *&avPacket) {
         if (avPacket) {
             av_packet_free(&avPacket);
             avPacket = 0;
         }
     }
 
-
-    static void freeAvFrame(AVFrame *avFrame) {
+    /**
+      *引用传递
+      * @param avPacket
+      */
+    static void freeAvFrame(AVFrame *&avFrame) {
         if (avFrame) {
             av_frame_free(&avFrame);
             avFrame = 0;
@@ -65,7 +76,7 @@ public:
 
 
 
-    virtual void start() = 0;
+    virtual void play() = 0;
 
     virtual void stop() = 0;
 

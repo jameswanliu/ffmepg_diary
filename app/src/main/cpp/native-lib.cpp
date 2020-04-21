@@ -22,9 +22,7 @@ StephenController *stephenController;
 JavaCallHelper *javaCallHelper;
 
 JavaVM *javavm;
-
 ANativeWindow *nativeWindow;
-
 static const char *classPath = "com/jamestony/ffmpeg_diary/player/StephenPlayer";
 
 static const char *classAudioPath = "com/jamestony/ffmpeg_diary/player/SteAudioPlayer";
@@ -40,6 +38,7 @@ using namespace std;
  * @param h
  */
 void renderFrame(uint8_t *data, int lines, int w, int h) {
+    LOGI("renderFrame", "lines = %d", lines);
     ANativeWindow_setBuffersGeometry(nativeWindow, w, h,
                                      WINDOW_FORMAT_RGBA_8888);
     ANativeWindow_Buffer outBuffer;
@@ -55,7 +54,9 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
     //被拷贝的行数
     int srcStride = lines;
     //被拷贝的指针
+    LOGI("outBuffer", "height = %d", outBuffer.height);
     for (int i = 0; i < outBuffer.height; i++) {
+        LOGI("memcpy", "i = %d", i);
         //将srcdata 数据拷贝到 start
         memcpy(start + i * destStride, data + i * srcStride, destStride);
     }
@@ -63,7 +64,7 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
 }
 
 
-extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
+extern "C" JNIEXPORT void natives_initial(JNIEnv *env, jobject obj) {
     javaCallHelper = new JavaCallHelper(javavm, env, obj);
     stephenController = new StephenController(javaCallHelper);
 }
@@ -71,7 +72,7 @@ extern "C" JNIEXPORT void native_initial(JNIEnv *env, jobject obj) {
 
 
 extern "C" JNIEXPORT jint
-native_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
+natives_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     if (nativeWindow) {
         ANativeWindow_release(nativeWindow);
         nativeWindow = 0;
@@ -82,14 +83,13 @@ native_video_prepare(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     return 1;
 }
 
-extern "C" JNIEXPORT void native_start(JNIEnv *env, jobject obj) {
-    stephenController->start();
+extern "C" JNIEXPORT void natives_start(JNIEnv *env, jobject obj) {
+    if (stephenController) stephenController->start();
 }
 
 
 
 extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstring output) {
-    avformat_network_init();
     int ret = -1;
     const char *path_ = env->GetStringUTFChars(path, NULL);
     const char *output_ = env->GetStringUTFChars(output, NULL);
@@ -210,11 +210,8 @@ extern "C" JNIEXPORT jint playAudio(JNIEnv *env, jobject obj, jstring path, jstr
 
 extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobject surface) {
     const char *path_ = env->GetStringUTFChars(path, NULL);//视频路径
-    avformat_network_init();
     AVFormatContext *avFormatContext;
-    ANativeWindow *nativeWindow;
     nativeWindow = ANativeWindow_fromSurface(env, surface);//调用android 的nativewindow
-
     int ret = -1;
     avFormatContext = avformat_alloc_context();
     AVCodecContext *avCodecContext;
@@ -326,9 +323,9 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
 
 JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
 JNINativeMethod method[] = {{"playVideo",            "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) playVideo},
-                            {"native_video_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) native_video_prepare},
-                            {"native_start",         "()V",                                         (void *) native_start},
-                            {"native_initial",       "()V",                                         (void *) native_initial}};
+                            {"natives_video_prepare", "(Ljava/lang/String;Landroid/view/Surface;)I", (void *) natives_video_prepare},
+                            {"natives_start",         "()V",                                         (void *) natives_start},
+                            {"natives_initial",       "()V",                                         (void *) natives_initial}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     javavm = vm;
@@ -345,7 +342,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
     ret = env->RegisterNatives(env->FindClass(classAudioPath), methods,
                                sizeof(methods) / sizeof(JNINativeMethod));
-
+    avformat_network_init();
     if (ret != JNI_OK) {
         LOGE("regist", "registclassAudioPath _error");
     }

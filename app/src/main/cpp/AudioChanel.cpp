@@ -19,7 +19,7 @@ AudioChanel::~AudioChanel() {
 
 }
 
-void AudioChanel::start() {
+void AudioChanel::play() {
 
 }
 
