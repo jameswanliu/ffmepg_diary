@@ -5,7 +5,10 @@
 #ifndef FFMPEG_DIARY_AUDIOCHANEL_H
 #define FFMPEG_DIARY_AUDIOCHANEL_H
 
+extern "C"{
 #include <include/libswresample/swresample.h>
+};
+
 #include "SLES/OpenSLES_Android.h"
 #include "BaseChanel.h"
 
@@ -23,10 +26,8 @@ public:
 
     virtual void stop();
 
-    SLObjectItf *slPlayer;
-
     int initOpensles();
-
+    uint8_t *buffer;
 
 private:
     pthread_t pthread_audio_decode;
@@ -35,7 +36,6 @@ private:
     int out_samplesize;
     int out_sample_rate;
     SwrContext  *swrContext;
-    uint8_t *buffer;
 };
 
 

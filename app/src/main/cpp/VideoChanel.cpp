@@ -74,8 +74,6 @@ void VideoChanel::sysncFrame() {
         av_usleep(16 * 1000);
         freeAvFrame(avFrame);
     }
-
-
     isPlay = 0;
     av_free(pointers);
     freeAvFrame(avFrame);

@@ -2,13 +2,14 @@
 // Created by kevin on 2020/4/16.
 //
 
-#include <include/libavutil/time.h>
+#include <include/androidlog.h>
 #include "AudioChanel.h"
-#include ""
+#include "BaseChanel.h"
 
 extern "C" {
 #include <include/libswresample/swresample.h>
 #include "include/libavcodec/avcodec.h"
+#include <include/libavutil/time.h>
 }
 
 
@@ -30,7 +31,7 @@ AudioChanel::~AudioChanel() {
 
 }
 
-void *decodeThread(void *args) {
+void *decodeAudioThread(void *args) {
     AudioChanel *audioChanel = static_cast<AudioChanel *>(args);
     audioChanel->decodePacket();
     return 0;
@@ -40,6 +41,7 @@ void AudioChanel::decodePacket() {
     AVPacket *avPacket;
     int ret = -1;
     while (isPlay) {
+        LOGI("decode audio packet","isplay");
         if (!isPlay) {
             break;
         }
@@ -48,7 +50,7 @@ void AudioChanel::decodePacket() {
             continue;
         }
 
-
+        LOGI("deQueue ret =","%d=",ret);
         ret = avcodec_send_packet(avCodecContext, avPacket);
         freeAvPacket(avPacket);
         if (ret == AVERROR(EAGAIN)) {
@@ -61,6 +63,7 @@ void AudioChanel::decodePacket() {
 
         AVFrame *avFrame = av_frame_alloc();
         ret = avcodec_receive_frame(avCodecContext, avFrame);
+        LOGI("receive ret =","%d",ret);
         if (ret == AVERROR(EAGAIN)) {
             continue;
         }
@@ -68,6 +71,7 @@ void AudioChanel::decodePacket() {
             break;
         }
         while (avpacketQueue.size() > 100 && isPlay) {
+            LOGI("full","%d=",isPlay);
             av_usleep(1000 * 10);
             continue;
         }
@@ -123,9 +127,8 @@ int AudioChanel::getPcm() {
 
 void *playThread(void *args) {
     AudioChanel *audioChanel = static_cast<AudioChanel *>(args);
-    int dataSize = audioChanel->getPcm();
-
-
+    audioChanel->initOpensles();
+    return 0;
 }
 
 
@@ -138,8 +141,8 @@ void AudioChanel::play() {
     swr_init(swrContext);
     avFrameQueue.setWork(1);
     avpacketQueue.setWork(1);
-    pthread_create(&pthread_audio_decode, NULL, decodeThread, this);
     pthread_create(&pthread_audio_play, NULL, playThread, this);
+    pthread_create(&pthread_audio_decode, NULL, decodeAudioThread, this);
 }
 
 
@@ -148,9 +151,18 @@ void AudioChanel::stop() {
 }
 
 
-int AudioChanel::initOpensles() {
+void bqPlayerCallback(SLAndroidSimpleBufferQueueItf qb, void *context) {
+    AudioChanel *audioChanel = static_cast<AudioChanel *>(context);
+    int size = audioChanel->getPcm();
+    LOGE("info","%d",size);
+    if (size > 0) {
+        LOGE("info size","%d",size);
+        (*qb)->Enqueue(qb, audioChanel->buffer, size);
+    }
+}
 
-    int ret = -1;
+
+int AudioChanel::initOpensles() {
 
     //sl播放引擎
     SLEngineItf slEngineItf;
@@ -185,12 +197,15 @@ int AudioChanel::initOpensles() {
         return sLresult;
     }
 
-   sLresult = (*slEnginObject)->GetInterface(slEnginObject,SL_IID_ENGINE,&slEngineItf);
+    sLresult = (*slEnginObject)->GetInterface(slEnginObject, SL_IID_ENGINE, &slEngineItf);
     if (sLresult != SL_RESULT_SUCCESS) {
         return sLresult;
     }
 
-    sLresult =  (*slEngineItf)->CreateOutputMix(slEngineItf, &outputMixObject, 0, 0, 0);
+    sLresult = (*slEngineItf)->CreateOutputMix(slEngineItf, &outputMixObject, 0, 0, 0);
+    if (SL_RESULT_SUCCESS != sLresult) {
+        return sLresult;
+    }
     sLresult = (*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE);
     if (SL_RESULT_SUCCESS != sLresult) {
         return sLresult;
@@ -213,13 +228,12 @@ int AudioChanel::initOpensles() {
     SLDataSource slDataSource = {&android_queue, &pcm};
     const SLInterfaceID ids[1] = {SL_IID_BUFFERQUEUE};
     const SLboolean req[1] = {SL_BOOLEAN_TRUE};
-    (*slEngineItf)->CreateAudioPlayer(slEngineItf
-            ,&slAudioPlayer// //播放器
-            ,&slDataSource//播放器参数  播放缓冲队列   播放格式
-            ,&audioSnk,//播放缓冲区
-                                          1,//播放接口回调个数
-                                          ids,//设置播放队列ID
-                                          req//是否采用内置的播放队列
+    (*slEngineItf)->CreateAudioPlayer(slEngineItf, &slAudioPlayer// //播放器
+            , &slDataSource//播放器参数  播放缓冲队列   播放格式
+            , &audioSnk,//播放缓冲区
+                                      1,//播放接口回调个数
+                                      ids,//设置播放队列ID
+                                      req//是否采用内置的播放队列
     );
     //初始化播放器
     (*slAudioPlayer)->Realize(slAudioPlayer, SL_BOOLEAN_FALSE);
@@ -228,12 +242,12 @@ int AudioChanel::initOpensles() {
     (*slAudioPlayer)->GetInterface(slAudioPlayer, SL_IID_PLAY, &slplayInterface);
 //    获得播放器接口
     (*slAudioPlayer)->GetInterface(slAudioPlayer, SL_IID_BUFFERQUEUE,
-                                    &slAndroidSimpleBufferQueueItf);
+                                   &slAndroidSimpleBufferQueueItf);
 
-    (*slAndroidSimpleBufferQueueItf)->RegisterCallback(slAndroidSimpleBufferQueueItf, bqPlayerCallback, this);
+    (*slAndroidSimpleBufferQueueItf)->RegisterCallback(slAndroidSimpleBufferQueueItf,
+                                                       bqPlayerCallback, this);
     //    设置播放状态
     (*slplayInterface)->SetPlayState(slplayInterface, SL_PLAYSTATE_PLAYING);
     bqPlayerCallback(slAndroidSimpleBufferQueueItf, this);
-
-
+    return sLresult;
 }

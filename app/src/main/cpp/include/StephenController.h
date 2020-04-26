@@ -22,10 +22,14 @@ class StephenController {
 public:
     StephenController(JavaCallHelper *javaCallHelper);
 
-    ~StephenController(){
-        delete[](javaCallHelper,audioChanel,videoChanel,url);
+    ~StephenController() {
+        delete (javaCallHelper);
+        delete (audioChanel);
+        delete (videoChanel);
+        delete (url);
         avformat_free_context(avFormatContext);
     }
+
     void setRenderFrame(RenderFrame renderFrame1);
 
     int prepareFFmpeg();
@@ -35,6 +39,7 @@ public:
     void dispatchPacket();
 
     void start();
+
 private:
     int isPlaying;
     pthread_t pid_create;

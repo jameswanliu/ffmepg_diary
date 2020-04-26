@@ -12,6 +12,7 @@ extern "C" {//指明当前C++代码调用其他C
 #include <include/libavutil/imgutils.h>
 #include <include/libswresample/swresample.h>
 #include <include/libswscale/swscale.h>
+#include <include/libavutil/frame.h>
 }
 
 JNIEnv *env = NULL;
@@ -311,7 +312,6 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
             memcpy(start + i * destStride, src_data + i * srcStride, destStride);
         }
         ANativeWindow_unlockAndPost(nativeWindow);
-//        usleep(1000 * 16);
         usleep((unsigned long) (1000 * 40 * 1));
         av_frame_free(&avFrame);
     }
@@ -323,6 +323,7 @@ extern "C" JNIEXPORT jint playVideo(JNIEnv *env, jobject obj, jstring path, jobj
     sws_freeContext(swsContext);
 //    delete (avPacketQueue);
     env->ReleaseStringUTFChars(path, path_);
+    return ret;
 }
 
 JNINativeMethod methods[] = {{"playAudio", "(Ljava/lang/String;Ljava/lang/String;)I", (void *) playAudio}};
