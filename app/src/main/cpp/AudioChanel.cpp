@@ -137,10 +137,10 @@ void AudioChanel::play() {
                                     out_sample_rate, avCodecContext->channel_layout,
                                     avCodecContext->sample_fmt,
                                     avCodecContext->sample_rate, 0, 0);
-    isPlay = true;
     swr_init(swrContext);
     avFrameQueue.setWork(1);
     avpacketQueue.setWork(1);
+    isPlay = true;
     pthread_create(&pthread_audio_play, NULL, playThread, this);
     pthread_create(&pthread_audio_decode, NULL, decodeAudioThread, this);
 }
