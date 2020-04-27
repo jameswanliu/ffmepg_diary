@@ -10,6 +10,7 @@ extern "C"{
 };
 
 #include "SLES/OpenSLES_Android.h"
+#include "SLES/OpenSLES.h"
 #include "BaseChanel.h"
 
 class AudioChanel : public BaseChanel {
@@ -26,7 +27,7 @@ public:
 
     virtual void stop();
 
-    int initOpensles();
+    void initOpensles();
     uint8_t *buffer;
 
 private:

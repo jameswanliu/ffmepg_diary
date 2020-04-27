@@ -55,9 +55,9 @@ void VideoChanel::sysncFrame() {
                    AV_PIX_FMT_RGBA, 1);
     AVFrame *avFrame = NULL;
     while (isPlay) {
-        LOGI("avFrame isPlay", "isPlay = %d", isPlay);
+//        LOGI("avFrame isPlay", "isPlay = %d", isPlay);
         ret = avFrameQueue.deQueue(avFrame);
-        LOGI("deQueueavFrame", "ret = %d", ret);
+//        LOGI("deQueueavFrame", "ret = %d", ret);
         if (!isPlay) {
             break;
         }
@@ -93,12 +93,12 @@ void VideoChanel::decodePacket() {
     AVPacket *avPacket = NULL;
     AVFrame *frame = NULL;
     while (isPlay) {
-        LOGI("isPlay", "ret = %d", isPlay);
+//        LOGI("isPlay", "ret = %d", isPlay);
         if (!isPlay) {
             break;
         }
         ret = avpacketQueue.deQueue(avPacket);
-        LOGI("deQueueavPacket", "ret = %d", ret);
+//        LOGI("deQueueavPacket", "ret = %d", ret);
         if (!ret) {
             continue;
         }
@@ -109,7 +109,7 @@ void VideoChanel::decodePacket() {
         }
 
         ret = avcodec_send_packet(avCodecContext, avPacket);
-        LOGI("avcodec_send_packet", "ret = %d", ret);
+//        LOGI("avcodec_send_packet", "ret = %d", ret);
         freeAvPacket(avPacket);
         if (ret == AVERROR(EAGAIN)) {
             continue;
@@ -118,7 +118,7 @@ void VideoChanel::decodePacket() {
         }
         frame = av_frame_alloc();
         ret = avcodec_receive_frame(avCodecContext, frame);
-        LOGI("avcodec_receive_frame", "ret = %d", ret);
+//        LOGI("avcodec_receive_frame", "ret = %d", ret);
         avFrameQueue.enQueue(frame);
         while (isPlay && avFrameQueue.size() > 100) {
             av_usleep(1000 * 10);

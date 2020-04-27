@@ -59,7 +59,7 @@ void renderFrame(uint8_t *data, int lines, int w, int h) {
     //被拷贝的指针
     LOGI("outBuffer", "height = %d", outBuffer.height);
     for (int i = 0; i < outBuffer.height; i++) {
-        LOGI("memcpy", "i = %d", i);
+//        LOGI("memcpy", "i = %d", i);
         //将srcdata 数据拷贝到 start
         memcpy(start + i * destStride, data + i * srcStride, destStride);
     }
