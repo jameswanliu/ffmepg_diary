@@ -12,14 +12,18 @@ class StephenPlayerActivity : AppCompatActivity() {
 
     lateinit var stephenPlayer: StephenPlayer
 
+
+    private val music = ExternalStorageDirectoryPath + "tencent/qqfile_recv/Love.mp3"
+    private val video =
+        ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4"
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_stephen_player)
         stephenPlayer = StephenPlayer(surface, ::onPrepare, ::onError, ::onProgress)
         stephenPlayer.native_initial()
-        val ret = stephenPlayer.native_video_prepare(
-            ExternalStorageDirectoryPath + "VBrowserData/3a544f6ffb69431b8d7d36b76c623e51.mp4/video.mp4"
-        )
+        val ret = stephenPlayer.native_video_prepare(video)
         Log.i("ret", "ret = $ret")
         acb.setOnClickListener {
             stephenPlayer.native_setSurface()

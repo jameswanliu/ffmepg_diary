@@ -82,17 +82,14 @@ void AudioChanel::decodePacket() {
 
 
 int AudioChanel::getPcm() {
-    AVFrame *avFrame;
+    AVFrame *avFrame = NULL;
     int dataSize = 0;
     int ret;
     while (isPlay) {
-        if (!isPlay) {
-            break;
-        }
         ret = avFrameQueue.deQueue(avFrame);
         LOGI("getpcm ret =", "%d", ret);
-        if (ret == AVERROR(EAGAIN)) {
-            continue;
+        if (!isPlay) {
+            break;
         }
         if (!ret) {
             continue;
@@ -101,7 +98,7 @@ int AudioChanel::getPcm() {
         /**
          * 重新缩放 得到输出数量
          */
-        int64_t dst_nb_samples = av_rescale_rnd(
+        uint64_t dst_nb_samples = av_rescale_rnd(
                 swr_get_delay(swrContext, avFrame->sample_rate) + avFrame->nb_samples,
                 out_sample_rate,
                 avFrame->sample_rate,
@@ -116,15 +113,17 @@ int AudioChanel::getPcm() {
         int nb = swr_convert(swrContext, &buffer, dst_nb_samples, (const uint8_t **) avFrame->data,
                              avFrame->nb_samples);
         LOGI("nb =", "%d", nb);
-        if (nb < 0) {
-            continue;
-        }
-
         /**
          * 每个通道的样本数 * 通道数 * 每个样本的字节数
          */
         dataSize = nb * out_chanel * out_samplesize;
         LOGI("dataSize =", "%d", dataSize);
+
+
+        /**
+         * 获取到dataSize 和 Buffer地址 后一定要break
+         */
+        break;
     }
     freeAvFrame(avFrame);
     return dataSize;
@@ -164,6 +163,9 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf qb, void *context) {
 }
 
 
+/**
+ *
+ */
 void AudioChanel::initOpensles() {
 
     //sl播放引擎
