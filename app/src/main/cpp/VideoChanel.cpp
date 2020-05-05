@@ -19,20 +19,45 @@ extern "C" {
 /**
  * VideoChanel 作用：将存放入队列中avpacket 取出来 并解码成avframe 然后存入 avframe队列
  */
-VideoChanel::VideoChanel(int chanelId, JavaCallHelper *javaCallHelper,
-                         AVCodecContext *avCodecContext) : BaseChanel(chanelId, javaCallHelper,
-                                                                      avCodecContext) {
 
+void dropPacket(queue<AVPacket*> &q) {
+
+    while (!q.empty()) {
+
+        AVPacket *pkt = q.front();
+        if (pkt->flags != AV_PKT_FLAG_KEY) {
+            q.pop();
+            BaseChanel::freeAvPacket(pkt);
+        } else {
+            break;
+        }
+    }
+
+}
+
+void dropFrame(queue<AVFrame*> &q) {
+    if (!q.empty()) {
+        AVFrame *frame = q.front();
+        q.pop();
+        BaseChanel::freeAvFrame(frame);
+    }
+}
+
+VideoChanel::VideoChanel(int chanelId, JavaCallHelper *javaCallHelper,
+                         AVCodecContext *avCodecContext, AVRational time_base) : BaseChanel(
+        chanelId, javaCallHelper,
+        avCodecContext, time_base) {
+    avpacketQueue.setSysncHandle(dropPacket);
+    avFrameQueue.setSysncHandle(dropFrame);
 }
 
 
 VideoChanel::~VideoChanel() {
-
 }
 
 
 void *sysncFrameThread(void *args) {
-    VideoChanel *videoChanel = static_cast<VideoChanel*>(args);
+    VideoChanel *videoChanel = static_cast<VideoChanel *>(args);
     videoChanel->sysncFrame();
     return 0;
 }
@@ -71,13 +96,52 @@ void VideoChanel::sysncFrame() {
                   avFrame->linesize, 0, avFrame->height, pointers,
                   linesizes);
         renderFrame(pointers[0], linesizes[0], avCodecContext->width, avCodecContext->height);
-        av_usleep(16 * 1000);
+        //av_usleep(16 * 1000);
+
+
+        /**
+         * 获取实时的显示时间（显示时间戳*时间单位）
+         */
+        clock = avFrame->pts * av_q2d(time_base);
+
+        /**
+         * 1除以平均帧率
+         */
+        double frame_delay = 1 / fps;
+        double extra_delay = avFrame->repeat_pict / (2 * fps);
+        double delay = frame_delay + extra_delay;
+
+        double audioClock = audioChanel->clock;
+        double diff = clock - audioClock;
+        LOGI("clock","clock = %d",clock);
+        LOGI("audioClock","audioClock = %d",audioClock);
+        if (clock>audioClock) {
+            LOGI("deff","deff = %d",diff);
+            if (diff > 1) {
+                av_usleep(diff * 2 * 1000000);
+            } else {
+                av_usleep((diff + delay) * 1000000);
+            }
+        } else {
+            LOGI("diffs","--diff = %d",diff);
+            if(diff>=0.05){
+                freeAvFrame(avFrame);
+                avFrameQueue.sync();
+                avpacketQueue.sync();
+            }
+        }
+
         freeAvFrame(avFrame);
     }
     isPlay = 0;
     av_free(pointers);
     freeAvFrame(avFrame);
     sws_freeContext(swsContext);
+}
+
+
+void VideoChanel::setAudioChanel(AudioChanel *audioChanel) {
+    this->audioChanel = audioChanel;
 }
 
 
@@ -93,12 +157,10 @@ void VideoChanel::decodePacket() {
     AVPacket *avPacket = NULL;
     AVFrame *frame = NULL;
     while (isPlay) {
-//        LOGI("isPlay", "ret = %d", isPlay);
         if (!isPlay) {
             break;
         }
         ret = avpacketQueue.deQueue(avPacket);
-//        LOGI("deQueueavPacket", "ret = %d", ret);
         if (!ret) {
             continue;
         }
@@ -139,6 +201,10 @@ void VideoChanel::play() {
 
 
 void VideoChanel::stop() {
+}
+
+void VideoChanel::setFps(double fps) {
+    this->fps = fps;
 }
 
 void VideoChanel::setRenderFrame(RenderFrame renderFrame1) {

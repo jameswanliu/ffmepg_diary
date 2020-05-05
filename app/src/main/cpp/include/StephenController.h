@@ -40,6 +40,8 @@ public:
 
     void start();
 
+    void seek(int position);
+
 private:
     int isPlaying;
     pthread_t pid_create;

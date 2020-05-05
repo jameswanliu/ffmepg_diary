@@ -44,6 +44,10 @@ void *prepare(void *arg) {
 }
 
 
+void StephenController::seek(int position) {
+}
+
+
 void StephenController::initalFFmpeg(JNIEnv *env, jstring path) {
     const char *path_ = env->GetStringUTFChars(path, NULL);
     url = new char[strlen(path_) + 1];
@@ -77,6 +81,7 @@ int StephenController::prepareFFmpeg() {
     }
     for (int i = 0; i < avFormatContext->nb_streams; ++i) {//在最新的流数据中找到视频流
         AVCodecParameters *parameters = avFormatContext->streams[i]->codecpar;//实例化解码器参数
+        AVStream *stream = avFormatContext->streams[i];
         if (!parameters) {
             javaCallHelper->callbackError(THREAD_CHILD, FFMPEG_DECODE_PARAMS_CONTEXT_FAIL);
             return ret;
@@ -108,19 +113,31 @@ int StephenController::prepareFFmpeg() {
 
         if (parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
             LOGI("audioChanel=", "index = %d", i);
-            audioChanel = new AudioChanel(i, javaCallHelper, video_codec_context);
+            audioChanel = new AudioChanel(i, javaCallHelper, video_codec_context,
+                                          stream->time_base);//流中获取帧时间基
         }
         if (parameters->codec_type == AVMEDIA_TYPE_VIDEO) {
+            AVRational avgFrameRate = stream->avg_frame_rate;//获取平均帧率
+            double fps = av_q2d(avgFrameRate);//将平均帧率 转成double
             LOGI("videoChanel=", "index = %d", i);
-            videoChanel = new VideoChanel(i, javaCallHelper, video_codec_context);
+            videoChanel = new VideoChanel(i, javaCallHelper, video_codec_context,
+                                          stream->time_base);//流中获取帧时间基
             videoChanel->setRenderFrame(renderFrame);
+            videoChanel->setFps(fps);
         }
+    }
+    if (audioChanel) {
+        videoChanel->setAudioChanel(audioChanel);
     }
     //回调初始化成功
     javaCallHelper->callbackPrepare(THREAD_CHILD);
 
     return ret;
+
 }
+
+
+
 
 
 void *dispatchThread(void *args) {

@@ -881,7 +881,7 @@ typedef struct AVStream {
     /**
      * This is the fundamental unit of time (in seconds) in terms
      * of which frame timestamps are represented.
-     *
+     * 这是表示帧时间戳的基本时间单位（秒）
      * decoding: set by libavformat
      * encoding: May be set by the caller before avformat_write_header() to
      *           provide a hint to the muxer about the desired timebase. In

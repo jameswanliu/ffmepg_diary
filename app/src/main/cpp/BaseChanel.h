@@ -27,13 +27,15 @@ public:
     SafeQueue<AVFrame *> avFrameQueue;
 
     volatile int chanelId;
+    AVRational time_base;
+    double clock = 0;
     volatile bool isPlay;
     JavaCallHelper *javaCallHelper;
     pthread_t decode;
     pthread_t syscnsizePlay;
     AVCodecContext *avCodecContext;
-    BaseChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext)
-            : chanelId(chanelId), javaCallHelper(javaCallHelper), avCodecContext(avCodecContext) {
+    BaseChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext,AVRational time_base)
+            : chanelId(chanelId), javaCallHelper(javaCallHelper), avCodecContext(avCodecContext),time_base(time_base) {
         avpacketQueue.setReleaseHandle(freeAvPacket);
         avFrameQueue.setReleaseHandle(freeAvFrame);
         avpacketQueue.clear();

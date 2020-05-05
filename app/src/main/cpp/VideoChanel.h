@@ -6,6 +6,7 @@
 
 
 #include "BaseChanel.h"
+#include "AudioChanel.h"
 
 #ifndef FFMPEG_DIARY_VIDEOCHANEL_H
 #define FFMPEG_DIARY_VIDEOCHANEL_H
@@ -18,7 +19,8 @@ typedef void (*RenderFrame)(uint8_t *, int, int, int);
 
 class VideoChanel : public BaseChanel {
 public:
-    VideoChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext);
+    VideoChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext,
+                AVRational time_base);
 
     ~VideoChanel();
 
@@ -32,8 +34,17 @@ public:
 
     virtual void stop();
 
+    AVRational time_base;
+
+    void setFps(double fps);
+
+    void setAudioChanel(AudioChanel *audioChanel);
+
+
 private:
     RenderFrame renderFrame;
+    double fps;
+    AudioChanel *audioChanel;
 
 };
 

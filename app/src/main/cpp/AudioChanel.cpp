@@ -14,8 +14,9 @@ extern "C" {
 
 
 AudioChanel::AudioChanel(int chanelId, JavaCallHelper *javaCallHelper,
-                         AVCodecContext *avCodecContext) : BaseChanel(chanelId, javaCallHelper,
-                                                                      avCodecContext) {
+                         AVCodecContext *avCodecContext, AVRational time_base) : BaseChanel(
+        chanelId, javaCallHelper,
+        avCodecContext, time_base) {
 
     //每个样本的字节数
     out_samplesize = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
@@ -119,6 +120,11 @@ int AudioChanel::getPcm() {
         dataSize = nb * out_chanel * out_samplesize;
         LOGI("dataSize =", "%d", dataSize);
 
+
+        /**
+         * 获取实时的显示时间（显示时间戳*时间单位）
+         */
+        clock = avFrame->pts * av_q2d(time_base);
 
         /**
          * 获取到dataSize 和 Buffer地址 后一定要break
