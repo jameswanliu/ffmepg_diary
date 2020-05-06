@@ -34,18 +34,13 @@ public:
 
     virtual void stop();
 
-    AVRational time_base;
-
     void setFps(double fps);
-
-    void setAudioChanel(AudioChanel *audioChanel);
+    AudioChanel *audioChanel;
 
 
 private:
     RenderFrame renderFrame;
     double fps;
-    AudioChanel *audioChanel;
-
 };
 
 

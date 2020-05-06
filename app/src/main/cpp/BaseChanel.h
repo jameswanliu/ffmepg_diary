@@ -23,17 +23,6 @@ extern "C" {
 class BaseChanel {
 
 public:
-    SafeQueue<AVPacket *> avpacketQueue;
-    SafeQueue<AVFrame *> avFrameQueue;
-
-    volatile int chanelId;
-    AVRational time_base;
-    double clock = 0;
-    volatile bool isPlay;
-    JavaCallHelper *javaCallHelper;
-    pthread_t decode;
-    pthread_t syscnsizePlay;
-    AVCodecContext *avCodecContext;
     BaseChanel(int chanelId, JavaCallHelper *javaCallHelper, AVCodecContext *avCodecContext,AVRational time_base)
             : chanelId(chanelId), javaCallHelper(javaCallHelper), avCodecContext(avCodecContext),time_base(time_base) {
         avpacketQueue.setReleaseHandle(freeAvPacket);
@@ -81,7 +70,17 @@ public:
     virtual void play() = 0;
 
     virtual void stop() = 0;
+    SafeQueue<AVPacket *> avpacketQueue;
+    SafeQueue<AVFrame *> avFrameQueue;
 
+    volatile int chanelId;
+    AVRational time_base;
+    double clock = 0;
+    volatile bool isPlay;
+    JavaCallHelper *javaCallHelper;
+    pthread_t decode;
+    pthread_t syscnsizePlay;
+    AVCodecContext *avCodecContext;
 private:
 };
 

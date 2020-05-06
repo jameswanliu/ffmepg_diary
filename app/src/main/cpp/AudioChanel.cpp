@@ -124,6 +124,7 @@ int AudioChanel::getPcm() {
         /**
          * 获取实时的显示时间（显示时间戳*时间单位）
          */
+        LOGI("a address","%p",&time_base);
         clock = avFrame->pts * av_q2d(time_base);
 
         /**

@@ -102,6 +102,7 @@ void VideoChanel::sysncFrame() {
         /**
          * 获取实时的显示时间（显示时间戳*时间单位）
          */
+         LOGI("v address","%p",&time_base);
         clock = avFrame->pts * av_q2d(time_base);
 
         /**
@@ -123,8 +124,8 @@ void VideoChanel::sysncFrame() {
                 av_usleep((diff + delay) * 1000000);
             }
         } else {
-            LOGI("diffs","--diff = %d",diff);
             if(diff>=0.05){
+                LOGI("sync","--sync = %d",diff);
                 freeAvFrame(avFrame);
                 avFrameQueue.sync();
                 avpacketQueue.sync();
@@ -139,10 +140,6 @@ void VideoChanel::sysncFrame() {
     sws_freeContext(swsContext);
 }
 
-
-void VideoChanel::setAudioChanel(AudioChanel *audioChanel) {
-    this->audioChanel = audioChanel;
-}
 
 
 void *decodeThread(void *args) {

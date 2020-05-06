@@ -126,9 +126,7 @@ int StephenController::prepareFFmpeg() {
             videoChanel->setFps(fps);
         }
     }
-    if (audioChanel) {
-        videoChanel->setAudioChanel(audioChanel);
-    }
+        videoChanel->audioChanel = audioChanel;
     //回调初始化成功
     javaCallHelper->callbackPrepare(THREAD_CHILD);
 
