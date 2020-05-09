@@ -53,6 +53,7 @@ VideoChanel::VideoChanel(int chanelId, JavaCallHelper *javaCallHelper,
 
 
 VideoChanel::~VideoChanel() {
+    delete(audioChanel);
 }
 
 
