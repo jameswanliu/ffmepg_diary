@@ -184,10 +184,8 @@ void AudioChanel::initOpensles() {
     //混音器对象
     SLObjectItf outputMixObject;
 
-
     //播放器对象
     SLObjectItf slAudioPlayer;
-
 
     //播放器回调接口
     SLPlayItf slplayInterface;
